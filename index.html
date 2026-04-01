@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Skateable – Know before you go</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, sans-serif;
+        background: #0f0f0f;
+        color: #f0f0f0;
+        min-height: 100vh;
+      }
+      header {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 64px 24px 0;
+        text-align: center;
+      }
+      h1 {
+        font-size: 48px;
+        font-weight: 800;
+        letter-spacing: -1px;
+        margin-bottom: 12px;
+      }
+      .tagline {
+        font-size: 20px;
+        color: #888;
+        margin-bottom: 40px;
+      }
+      .badge {
+        display: inline-block;
+        margin-bottom: 64px;
+      }
+      .badge img {
+        height: 52px;
+      }
+      .features {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 0 24px 80px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+      }
+      .feature {
+        background: #1a1a1a;
+        border-radius: 12px;
+        padding: 28px;
+      }
+      .feature h2 {
+        font-size: 15px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #4ade80;
+        margin-bottom: 8px;
+      }
+      .feature p {
+        font-size: 15px;
+        color: #888;
+        line-height: 1.6;
+      }
+      footer {
+        text-align: center;
+        padding: 24px;
+        color: #444;
+        font-size: 13px;
+      }
+      footer a {
+        color: #555;
+        text-decoration: none;
+        margin: 0 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Skateable</h1>
+      <p class="tagline">Know if your park is dry before you leave the house.</p>
+      <a class="badge" href="https://apps.apple.com/app/skateable/id6744642992">
+        <img
+          src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+          alt="Download on the App Store"
+        />
+      </a>
+    </header>
+
+    <div class="features">
+      <div class="feature">
+        <h2>Skateability score</h2>
+        <p>A 0–100 score based on current weather, 48h rain history, surface type, drainage, and sun exposure.</p>
+      </div>
+      <div class="feature">
+        <h2>Plan ahead</h2>
+        <p>See a forecast score for any session up to 7 days out. Know whether Saturday morning is worth it.</p>
+      </div>
+      <div class="feature">
+        <h2>Community reports</h2>
+        <p>Skaters log whether a park was dry or wet. Real ground truth, not just weather data.</p>
+      </div>
+      <div class="feature">
+        <h2>No account needed</h2>
+        <p>Add parks and log sessions immediately. No sign-up, no email, no password.</p>
+      </div>
+    </div>
+
+    <footer>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/disclaimer">Disclaimer</a>
+      <a href="/support">Support</a>
+    </footer>
+  </body>
+</html>
