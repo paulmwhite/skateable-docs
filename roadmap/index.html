@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Roadmap - Skateable</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, sans-serif;
+        background: #0f0f0f;
+        color: #f0f0f0;
+        min-height: 100vh;
+      }
+      header {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 48px 24px 40px;
+      }
+      header a {
+        text-decoration: none;
+      }
+      h1 {
+        font-size: 32px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin-top: 20px;
+        margin-bottom: 6px;
+      }
+      .subtitle {
+        font-size: 15px;
+        color: #666;
+      }
+      main {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 0 24px 80px;
+      }
+      .section {
+        border-top: 1px solid #1e1e1e;
+        padding: 36px 0;
+      }
+      .section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      .section-title {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.3px;
+      }
+      .section-desc {
+        font-size: 14px;
+        color: #555;
+        margin-bottom: 24px;
+      }
+      .badge-next {
+        display: inline-block;
+        background: #1e1e1e;
+        color: #facc15;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 3px 8px;
+        border-radius: 4px;
+        border: 1px solid #2e2a00;
+      }
+      .badge-requested {
+        display: inline-block;
+        background: #1a1a1a;
+        color: #a78bfa;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 3px 8px;
+        border-radius: 4px;
+        border: 1px solid #2e1f4e;
+      }
+      .items {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .items li {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .item-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #f0f0f0;
+      }
+      .item-desc {
+        font-size: 14px;
+        color: #666;
+        line-height: 1.5;
+      }
+      footer {
+        text-align: center;
+        padding: 24px;
+        color: #444;
+        font-size: 13px;
+      }
+      footer a {
+        color: #555;
+        text-decoration: none;
+        margin: 0 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="/"><img src="/icon.png" alt="Skateable" style="width:52px;height:52px;border-radius:12px;display:block;" /></a>
+      <h1>Roadmap</h1>
+      <p class="subtitle">Where we're headed</p>
+    </header>
+
+    <main>
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Up next</span>
+          <span class="badge-next">In progress</span>
+        </div>
+        <p class="section-desc">Features actively being built for the next release.</p>
+        <ul class="items">
+          <li>
+            <span class="item-title">Onboarding</span>
+            <span class="item-desc">A guided first-run experience to get new users set up quickly.</span>
+          </li>
+          <li>
+            <span class="item-title">Location types</span>
+            <span class="item-desc">Categorise spots as skatepark, street spot, bowl, DIY, and more.</span>
+          </li>
+          <li>
+            <span class="item-title">Location attributes</span>
+            <span class="item-desc">Tag spots with surface material, coverage, lighting, and other details that affect skateability.</span>
+          </li>
+          <li>
+            <span class="item-title">Location photos</span>
+            <span class="item-desc">Add photos to locations so others know what to expect before they visit.</span>
+          </li>
+          <li>
+            <span class="item-title">Advanced filtering</span>
+            <span class="item-desc">Filter saved locations by type, attributes, and current score.</span>
+          </li>
+          <li>
+            <span class="item-title">Search improvements</span>
+            <span class="item-desc">Faster, more relevant results when finding existing spots to save.</span>
+          </li>
+          <li>
+            <span class="item-title">Map view improvements</span>
+            <span class="item-desc">Pan and zoom the map to explore locations near any point, not just your current position.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Requested</span>
+          <span class="badge-requested">Community</span>
+        </div>
+        <p class="section-desc">Features requested by the community. No timeline yet, but all are on our radar.</p>
+        <ul class="items">
+          <li>
+            <span class="item-title">Notifications</span>
+            <span class="item-desc">Get alerted when a saved spot dries out or when conditions are forecast to be good for a session.</span>
+          </li>
+          <li>
+            <span class="item-title">Auto session detection</span>
+            <span class="item-desc">Use location detection to prompt a session log when you arrive at a saved spot, so you never forget to report.</span>
+          </li>
+          <li>
+            <span class="item-title">Eyes on the prize</span>
+            <span class="item-desc">Log a weather observation when you pass a spot but aren't skating it. Helps the community know conditions without a full session report.</span>
+          </li>
+          <li>
+            <span class="item-title">More photos</span>
+            <span class="item-desc">Support for multiple photos per location, including community-contributed shots.</span>
+          </li>
+          <li>
+            <span class="item-title">Parking data</span>
+            <span class="item-desc">Show nearby parking options and notes on each location page.</span>
+          </li>
+        </ul>
+      </div>
+    </main>
+
+    <footer>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/disclaimer">Disclaimer</a>
+      <a href="/support">Support</a>
+      <a href="/releases">Releases</a>
+      <a href="/roadmap">Roadmap</a>
+    </footer>
+  </body>
+</html>
