@@ -73,7 +73,7 @@
       td { padding: 10px 12px; font-size: 14px; border-bottom: 1px solid #1a1a1a; vertical-align: middle; }
       tr:hover td { background: #151515; }
       td input { width: 100%; padding: 6px 8px; }
-      .park-actions { display: flex; gap: 8px; }
+      .park-actions { display: flex; gap: 8px; flex-wrap: wrap; }
       .park-actions button { padding: 6px 12px; font-size: 13px; min-height: 36px; }
 
       /* Duplicate pairs */
@@ -90,6 +90,22 @@
       .dup-distance { font-size: 12px; color: #888; margin-right: auto; }
       .dup-footer button { padding: 7px 14px; font-size: 13px; min-height: 36px; }
 
+      /* Parking edit form */
+      .parking-edit-cell { padding: 14px 12px !important; }
+      .parking-edit-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 16px;
+      }
+      .parking-edit-grid .field { margin-bottom: 0; }
+      .parking-edit-full { grid-column: 1 / -1; }
+      .parking-dim { color: #444; font-style: italic; }
+      .parking-map-link {
+        display: inline-block; margin-left: 6px; font-size: 11px;
+        color: #3b82f6; text-decoration: none; vertical-align: middle;
+      }
+      .parking-map-link:hover { text-decoration: underline; }
+
       .empty { color: #444; font-size: 14px; padding: 24px 0; }
       .error { color: #ef4444; font-size: 14px; margin-top: 12px; }
       .loading { color: #555; font-size: 14px; padding: 24px 0; }
@@ -104,6 +120,7 @@
         .dup-parks { grid-template-columns: 1fr; }
         .photo-grid { grid-template-columns: 1fr; }
         .pagination button { flex: 1; }
+        .parking-edit-grid { grid-template-columns: 1fr; }
 
         /* Responsive table: stack rows as cards */
         .table-scroll { overflow-x: visible; }
@@ -131,6 +148,10 @@
         table tr.editing-row { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
         table tr.editing-row td { display: block; width: 100%; padding: 0; }
         table tr.editing-row td:nth-child(3) { display: block; }
+
+        /* Parking editing on mobile */
+        table tr.parking-editing-row { display: flex; flex-direction: column; gap: 0; padding: 0; border-radius: 8px; background: #1a1a1a; overflow: hidden; }
+        table tr.parking-editing-row td { display: block; width: 100%; padding: 0; border: none; }
       }
     </style>
   </head>
@@ -162,6 +183,9 @@
 
       let currentUser = null;
       let parksPage = 0;
+
+      // Stores full park record while a parking row is in edit mode
+      const parkingRowData = new Map();
 
       // ─── Auth ────────────────────────────────────────────────────────────────
 
@@ -260,6 +284,45 @@
         if (error) throw error;
       }
 
+      // ─── Parking locations ────────────────────────────────────────────────────
+
+      async function loadParkingLocations() {
+        const { data, error } = await db
+          .from('parks')
+          .select('id, name, latitude, longitude, attributes, created_at')
+          .not('attributes->parkingLocation', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(100);
+        if (error) throw error;
+        return (data ?? []).filter(p => p.attributes?.parkingLocation != null);
+      }
+
+      async function saveParkingLocation(id, fullAttrs, parking) {
+        const plat = parseFloat(parking.latitude);
+        const plng = parseFloat(parking.longitude);
+        if (isNaN(plat) || plat < -90 || plat > 90)
+          throw new Error('Parking latitude must be between -90 and 90');
+        if (isNaN(plng) || plng < -180 || plng > 180)
+          throw new Error('Parking longitude must be between -180 and 180');
+        const updated = {
+          ...fullAttrs,
+          parkingLocation: {
+            latitude: plat,
+            longitude: plng,
+            ...(parking.address?.trim() ? { address: parking.address.trim() } : {}),
+            ...(parking.notes?.trim() ? { notes: parking.notes.trim() } : {}),
+          },
+        };
+        const { error } = await db.from('parks').update({ attributes: updated }).eq('id', id);
+        if (error) throw error;
+      }
+
+      async function removeParkingLocation(id, fullAttrs) {
+        const { parkingLocation: _removed, ...rest } = fullAttrs;
+        const { error } = await db.from('parks').update({ attributes: rest }).eq('id', id);
+        if (error) throw error;
+      }
+
       // ─── Duplicates ──────────────────────────────────────────────────────────
 
       function haversineMeters(lat1, lon1, lat2, lon2) {
@@ -352,6 +415,10 @@
               <div id="duplicates-content" class="loading">Loading…</div>
             </section>
             <section>
+              <h2>Parking locations</h2>
+              <div id="parking-content" class="loading">Loading…</div>
+            </section>
+            <section>
               <h2>Name review</h2>
               <div id="names-content" class="loading">Loading…</div>
             </section>
@@ -430,6 +497,97 @@
           </div>
         `).join('');
         return `<div class="dup-list">${cards}</div>`;
+      }
+
+      // ─── Parking render ───────────────────────────────────────────────────────
+
+      function renderParkingSection(parks) {
+        if (parks.length === 0) return '<p class="empty">No parking locations recorded yet.</p>';
+        const rows = parks.map(p => renderParkingRow(p)).join('');
+        return `
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Park</th>
+                  <th>Address</th>
+                  <th>Parking coords</th>
+                  <th>Notes</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="parking-body">${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderParkingRow(park, editing = false) {
+        const id = park.id;
+        const pl = park.attributes?.parkingLocation ?? {};
+
+        if (editing) {
+          return `
+            <tr id="parking-row-${id}" class="editing-row parking-editing-row">
+              <td class="parking-edit-cell" colspan="5">
+                <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:12px">
+                  ${escHtml(park.name)}
+                </div>
+                <div class="parking-edit-grid">
+                  <div class="field">
+                    <label>Parking latitude</label>
+                    <input type="number" id="edit-pl-lat-${id}"
+                      value="${escAttr(String(pl.latitude ?? ''))}" step="any" placeholder="Latitude" />
+                  </div>
+                  <div class="field">
+                    <label>Parking longitude</label>
+                    <input type="number" id="edit-pl-lng-${id}"
+                      value="${escAttr(String(pl.longitude ?? ''))}" step="any" placeholder="Longitude" />
+                  </div>
+                  <div class="field parking-edit-full">
+                    <label>Address <span style="color:#444;font-weight:400">(optional)</span></label>
+                    <input type="text" id="edit-pl-addr-${id}"
+                      value="${escAttr(pl.address ?? '')}" placeholder="e.g. High Street, Bicester" />
+                  </div>
+                  <div class="field parking-edit-full">
+                    <label>Notes <span style="color:#444;font-weight:400">(optional, max 200 chars)</span></label>
+                    <input type="text" id="edit-pl-notes-${id}" maxlength="200"
+                      value="${escAttr(pl.notes ?? '')}" placeholder="e.g. Free parking on weekends" />
+                  </div>
+                </div>
+                <div class="park-actions" style="margin-top:12px">
+                  <button class="btn-save" data-action="save-parking" data-id="${id}">Save</button>
+                  <button class="btn-cancel" data-action="cancel-parking" data-id="${id}">Cancel</button>
+                </div>
+                <div id="parking-error-${id}" class="error"></div>
+              </td>
+            </tr>
+          `;
+        }
+
+        const plat = typeof pl.latitude === 'number' ? pl.latitude.toFixed(5) : '—';
+        const plng = typeof pl.longitude === 'number' ? pl.longitude.toFixed(5) : '—';
+        const mapsUrl = (typeof pl.latitude === 'number' && typeof pl.longitude === 'number')
+          ? `https://www.google.com/maps?q=${pl.latitude},${pl.longitude}`
+          : null;
+        const coordsCell = mapsUrl
+          ? `${plat}, ${plng}<a class="parking-map-link" href="${mapsUrl}" target="_blank" rel="noopener">↗ map</a>`
+          : `${plat}, ${plng}`;
+
+        return `
+          <tr id="parking-row-${id}">
+            <td>${escHtml(park.name)}</td>
+            <td>${pl.address ? escHtml(pl.address) : '<span class="parking-dim">—</span>'}</td>
+            <td>${coordsCell}</td>
+            <td>${pl.notes ? escHtml(pl.notes) : '<span class="parking-dim">—</span>'}</td>
+            <td>
+              <div class="park-actions">
+                <button class="btn-edit" data-action="edit-parking" data-id="${id}">Edit</button>
+                <button class="btn-delete" data-action="remove-parking" data-id="${id}">Remove</button>
+              </div>
+            </td>
+          </tr>
+        `;
       }
 
       function renderNames(flagged) {
@@ -528,6 +686,7 @@
         await Promise.all([
           loadPhotosSection(),
           loadDuplicatesSection(),
+          loadParkingSection(),
           loadParksAndNamesSection(),
         ]);
       }
@@ -547,6 +706,20 @@
         if (!el) return;
         try {
           el.innerHTML = renderDuplicates(await loadDuplicateCandidates());
+        } catch (err) {
+          el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
+        }
+      }
+
+      async function loadParkingSection() {
+        const el = document.getElementById('parking-content');
+        if (!el) return;
+        try {
+          const parks = await loadParkingLocations();
+          // Seed the row data map so edits can access full attributes
+          parkingRowData.clear();
+          for (const p of parks) parkingRowData.set(p.id, p);
+          el.innerHTML = renderParkingSection(parks);
         } catch (err) {
           el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
         }
@@ -667,6 +840,76 @@
 
         if (action === 'parks-next') {
           loadParksAndNamesSection(parksPage + 1);
+          return;
+        }
+
+        // ── Parking actions ──────────────────────────────────────────────────
+
+        if (action === 'edit-parking') {
+          const id = btn.dataset.id;
+          const park = parkingRowData.get(id);
+          if (!park) return;
+          const row = document.getElementById(`parking-row-${id}`);
+          if (row) {
+            row.outerHTML = renderParkingRow(park, true);
+            document.getElementById(`edit-pl-lat-${id}`)?.focus();
+          }
+          return;
+        }
+
+        if (action === 'save-parking') {
+          const id = btn.dataset.id;
+          const park = parkingRowData.get(id);
+          if (!park) return;
+          const lat   = document.getElementById(`edit-pl-lat-${id}`)?.value ?? '';
+          const lng   = document.getElementById(`edit-pl-lng-${id}`)?.value ?? '';
+          const addr  = document.getElementById(`edit-pl-addr-${id}`)?.value ?? '';
+          const notes = document.getElementById(`edit-pl-notes-${id}`)?.value ?? '';
+          const errEl = document.getElementById(`parking-error-${id}`);
+          btn.disabled = true;
+          errEl.textContent = '';
+          try {
+            await saveParkingLocation(id, park.attributes, { latitude: lat, longitude: lng, address: addr, notes });
+            // Update local data and re-render row
+            park.attributes.parkingLocation = {
+              latitude: parseFloat(lat),
+              longitude: parseFloat(lng),
+              ...(addr.trim() ? { address: addr.trim() } : {}),
+              ...(notes.trim() ? { notes: notes.trim() } : {}),
+            };
+            const row = document.getElementById(`parking-row-${id}`);
+            if (row) row.outerHTML = renderParkingRow(park);
+          } catch (err) {
+            errEl.textContent = err.message;
+            btn.disabled = false;
+          }
+          return;
+        }
+
+        if (action === 'cancel-parking') {
+          const id = btn.dataset.id;
+          const park = parkingRowData.get(id);
+          if (!park) return;
+          const row = document.getElementById(`parking-row-${id}`);
+          if (row) row.outerHTML = renderParkingRow(park);
+          return;
+        }
+
+        if (action === 'remove-parking') {
+          const id = btn.dataset.id;
+          const park = parkingRowData.get(id);
+          if (!park) return;
+          if (!confirm(`Remove the parking location for "${park.name}"?`)) return;
+          btn.disabled = true;
+          try {
+            await removeParkingLocation(id, park.attributes);
+            document.getElementById(`parking-row-${id}`)?.remove();
+            parkingRowData.delete(id);
+            if (!document.querySelector('#parking-body tr')) {
+              document.getElementById('parking-content').innerHTML =
+                '<p class="empty">No parking locations recorded yet.</p>';
+            }
+          } catch (err) { alert(err.message); btn.disabled = false; }
           return;
         }
       });
