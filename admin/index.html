@@ -100,6 +100,28 @@
       .parking-edit-grid .field { margin-bottom: 0; }
       .parking-edit-full { grid-column: 1 / -1; }
       .parking-dim { color: #444; font-style: italic; }
+
+      /* Recently updated */
+      .recent-list { display: flex; flex-direction: column; gap: 8px; }
+      .recent-card {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 12px;
+        background: #1a1a1a;
+        border-radius: 8px;
+        padding: 12px 14px;
+      }
+      .recent-name { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+      .recent-meta { font-size: 12px; color: #555; display: flex; flex-wrap: wrap; gap: 6px; }
+      .recent-tag {
+        background: #222; color: #777;
+        font-size: 11px; font-weight: 600;
+        padding: 2px 7px; border-radius: 4px;
+        text-transform: uppercase; letter-spacing: 0.04em;
+      }
+      .recent-tag.parking { color: #3b82f6; background: rgba(59,130,246,0.12); }
+      .recent-time { font-size: 12px; color: #444; white-space: nowrap; }
       .parking-map-link {
         display: inline-block; margin-left: 6px; font-size: 11px;
         color: #3b82f6; text-decoration: none; vertical-align: middle;
@@ -284,14 +306,70 @@
         if (error) throw error;
       }
 
+      // ─── Recently updated ─────────────────────────────────────────────────────
+
+      async function loadRecentlyUpdated() {
+        const { data, error } = await db
+          .from('parks')
+          .select('id, name, attributes, updated_at, created_at')
+          .order('updated_at', { ascending: false })
+          .limit(20);
+        if (error) throw error;
+        return data ?? [];
+      }
+
+      function renderRecentlyUpdated(parks) {
+        if (parks.length === 0) return '<p class="empty">No parks yet.</p>';
+        const cards = parks.map(p => {
+          const attrs = p.attributes ?? {};
+          const updatedAt = new Date(p.updated_at);
+          const createdAt = new Date(p.created_at);
+          const wasEdited = Math.abs(updatedAt - createdAt) > 5000;
+          const relTime = timeAgo(updatedAt);
+
+          const tags = [];
+          if (attrs.parkType) tags.push({ label: PARK_TYPE_LABELS[attrs.parkType] ?? attrs.parkType, cls: '' });
+          if (attrs.parkingLocation) tags.push({ label: 'Parking', cls: 'parking' });
+          const tagHtml = tags.map(t =>
+            `<span class="recent-tag ${t.cls}">${escHtml(t.label)}</span>`
+          ).join('');
+
+          return `
+            <div class="recent-card">
+              <div>
+                <div class="recent-name">${escHtml(p.name)}</div>
+                <div class="recent-meta">
+                  ${tagHtml}
+                  ${wasEdited ? '<span style="color:#555">edited</span>' : '<span style="color:#555">created</span>'}
+                </div>
+              </div>
+              <div class="recent-time">${relTime}</div>
+            </div>
+          `;
+        }).join('');
+        return `<div class="recent-list">${cards}</div>`;
+      }
+
+      function timeAgo(date) {
+        const seconds = Math.floor((Date.now() - date) / 1000);
+        if (seconds < 60) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 7) return `${days}d ago`;
+        return date.toLocaleDateString();
+      }
+
       // ─── Parking locations ────────────────────────────────────────────────────
 
       async function loadParkingLocations() {
         const { data, error } = await db
           .from('parks')
-          .select('id, name, latitude, longitude, attributes, created_at')
+          .select('id, name, latitude, longitude, attributes, updated_at')
           .not('attributes->parkingLocation', 'is', null)
-          .order('created_at', { ascending: false })
+          .order('updated_at', { ascending: false })
           .limit(100);
         if (error) throw error;
         return (data ?? []).filter(p => p.attributes?.parkingLocation != null);
@@ -406,6 +484,10 @@
             <button class="btn-logout" data-action="logout">Sign out</button>
           </header>
           <div id="main">
+            <section>
+              <h2>Recently updated parks</h2>
+              <div id="recent-content" class="loading">Loading…</div>
+            </section>
             <section>
               <h2>Photos to review</h2>
               <div id="photos-content" class="loading">Loading…</div>
@@ -684,11 +766,22 @@
 
       async function loadContent() {
         await Promise.all([
+          loadRecentSection(),
           loadPhotosSection(),
           loadDuplicatesSection(),
           loadParkingSection(),
           loadParksAndNamesSection(),
         ]);
+      }
+
+      async function loadRecentSection() {
+        const el = document.getElementById('recent-content');
+        if (!el) return;
+        try {
+          el.innerHTML = renderRecentlyUpdated(await loadRecentlyUpdated());
+        } catch (err) {
+          el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
+        }
       }
 
       async function loadPhotosSection() {
@@ -824,6 +917,7 @@
           try {
             await updatePark(id, name, lat, lng);
             loadParksAndNamesSection();
+            loadRecentSection();
           } catch (err) { errEl.textContent = err.message; btn.disabled = false; }
           return;
         }
@@ -879,6 +973,7 @@
             };
             const row = document.getElementById(`parking-row-${id}`);
             if (row) row.outerHTML = renderParkingRow(park);
+            loadRecentSection();
           } catch (err) {
             errEl.textContent = err.message;
             btn.disabled = false;
