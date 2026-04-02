@@ -44,8 +44,33 @@
 
       #main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
 
-      section { margin-bottom: 48px; }
-      section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: #4ade80; margin-bottom: 20px; }
+      section { margin-bottom: 24px; }
+      section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: #4ade80; margin-bottom: 0; }
+
+      /* Summary bar */
+      .summary-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 36px; }
+      .summary-chip {
+        background: #1a1a1a; border: 1px solid #222; border-radius: 8px;
+        padding: 12px 16px; font-size: 13px; color: #888; min-width: 120px;
+      }
+      .summary-count { font-size: 22px; font-weight: 700; color: #f0f0f0; display: block; margin-bottom: 2px; }
+      .summary-count.loading { color: #2a2a2a; }
+      .summary-count.nonzero { color: #f59e0b; }
+
+      /* Collapsible sections */
+      section details > summary {
+        cursor: pointer; list-style: none; user-select: none;
+        display: flex; align-items: center;
+      }
+      section details > summary::-webkit-details-marker { display: none; }
+      section details > summary h2 { flex: 1; }
+      section details[open] > summary { margin-bottom: 20px; }
+      section details[open] { margin-bottom: 48px; }
+      .section-caret {
+        color: #2a2a2a; font-size: 10px; margin-left: 8px;
+        transition: transform 0.15s; display: inline-block;
+      }
+      section details[open] .section-caret { transform: rotate(90deg); color: #555; }
 
       .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
       .photo-card { background: #1a1a1a; border-radius: 12px; overflow: hidden; }
@@ -484,29 +509,55 @@
             <button class="btn-logout" data-action="logout">Sign out</button>
           </header>
           <div id="main">
+            <div class="summary-bar">
+              <div class="summary-chip" id="summary-photos">
+                <span class="summary-count loading">—</span>
+                photos to review
+              </div>
+              <div class="summary-chip" id="summary-duplicates">
+                <span class="summary-count loading">—</span>
+                potential duplicates
+              </div>
+              <div class="summary-chip" id="summary-names">
+                <span class="summary-count loading">—</span>
+                flagged names
+              </div>
+            </div>
             <section>
-              <h2>Recently updated parks</h2>
-              <div id="recent-content" class="loading">Loading…</div>
+              <details>
+                <summary><h2>Recently updated parks <span class="section-caret">▶</span></h2></summary>
+                <div id="recent-content" class="loading">Loading…</div>
+              </details>
             </section>
             <section>
-              <h2>Photos to review</h2>
-              <div id="photos-content" class="loading">Loading…</div>
+              <details>
+                <summary><h2>Photos to review <span class="section-caret">▶</span></h2></summary>
+                <div id="photos-content" class="loading">Loading…</div>
+              </details>
             </section>
             <section>
-              <h2>Potential duplicates</h2>
-              <div id="duplicates-content" class="loading">Loading…</div>
+              <details>
+                <summary><h2>Potential duplicates <span class="section-caret">▶</span></h2></summary>
+                <div id="duplicates-content" class="loading">Loading…</div>
+              </details>
             </section>
             <section>
-              <h2>Parking locations</h2>
-              <div id="parking-content" class="loading">Loading…</div>
+              <details>
+                <summary><h2>Parking locations <span class="section-caret">▶</span></h2></summary>
+                <div id="parking-content" class="loading">Loading…</div>
+              </details>
             </section>
             <section>
-              <h2>Name review</h2>
-              <div id="names-content" class="loading">Loading…</div>
+              <details>
+                <summary><h2>Name review <span class="section-caret">▶</span></h2></summary>
+                <div id="names-content" class="loading">Loading…</div>
+              </details>
             </section>
             <section>
-              <h2>Parks</h2>
-              <div id="parks-content" class="loading">Loading…</div>
+              <details>
+                <summary><h2>Parks <span class="section-caret">▶</span></h2></summary>
+                <div id="parks-content" class="loading">Loading…</div>
+              </details>
             </section>
           </div>
         `;
@@ -788,7 +839,9 @@
         const el = document.getElementById('photos-content');
         if (!el) return;
         try {
-          el.innerHTML = renderPhotos(await loadPendingPhotos());
+          const photos = await loadPendingPhotos();
+          el.innerHTML = renderPhotos(photos);
+          updateSummaryChip('summary-photos', photos.length);
         } catch (err) {
           el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
         }
@@ -798,7 +851,9 @@
         const el = document.getElementById('duplicates-content');
         if (!el) return;
         try {
-          el.innerHTML = renderDuplicates(await loadDuplicateCandidates());
+          const pairs = await loadDuplicateCandidates();
+          el.innerHTML = renderDuplicates(pairs);
+          updateSummaryChip('summary-duplicates', pairs.length);
         } catch (err) {
           el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
         }
@@ -830,6 +885,7 @@
           ]);
           namesEl.innerHTML = renderNames(flagged);
           parksEl.innerHTML = renderParks(parks, page, count);
+          updateSummaryChip('summary-names', flagged.length);
         } catch (err) {
           const msg = `<p class="error">${escHtml(err.message)}</p>`;
           parksEl.innerHTML = msg;
@@ -1038,6 +1094,14 @@
       }
 
       // ─── Utils ───────────────────────────────────────────────────────────────
+
+      function updateSummaryChip(id, count) {
+        const countEl = document.querySelector(`#${id} .summary-count`);
+        if (!countEl) return;
+        countEl.textContent = count;
+        countEl.classList.remove('loading');
+        countEl.classList.toggle('nonzero', count > 0);
+      }
 
       function removePhotoCard(id) {
         document.getElementById(`photo-${id}`)?.remove();
