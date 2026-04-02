@@ -51,8 +51,13 @@
       .photo-card { background: #1a1a1a; border-radius: 12px; overflow: hidden; }
       .photo-card img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; background: #111; }
       .photo-card-body { padding: 14px; }
-      .photo-card-park { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-      .photo-card-meta { font-size: 12px; color: #555; margin-bottom: 12px; }
+      .photo-card-park { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+      .photo-card-meta { font-size: 12px; color: #555; margin-bottom: 12px; line-height: 1.7; }
+      .photo-card-tag {
+        display: inline-block; background: #222; color: #aaa;
+        font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px;
+        margin-right: 4px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;
+      }
       .photo-card-actions { display: flex; gap: 8px; }
       .photo-card-actions button { flex: 1; padding: 8px; font-size: 13px; }
 
@@ -144,6 +149,15 @@
       const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
       const PARKS_PER_PAGE = 25;
+
+      const PARK_TYPE_LABELS = {
+        skatepark: 'Skatepark', spot: 'Spot', diy: 'DIY', ramp: 'Ramp',
+      };
+      const SURFACE_LABELS = {
+        modern_smooth: 'Smooth concrete', old_concrete: 'Old concrete', rough_asphalt: 'Rough asphalt',
+      };
+      const DRAINAGE_LABELS = { good: 'Good drainage', average: 'Avg drainage', poor: 'Poor drainage' };
+      const SUN_LABELS = { direct_sun: 'Full sun', partial_sun: 'Partial sun', full_shade: 'Full shade' };
       const DUPLICATE_THRESHOLD_METERS = 300;
 
       let currentUser = null;
@@ -168,7 +182,7 @@
       async function loadPendingPhotos() {
         const { data, error } = await db
           .from('park_photos')
-          .select('id, park_id, storage_path, created_at, parks(name)')
+          .select('id, park_id, storage_path, created_at, parks(name, latitude, longitude, attributes)')
           .eq('approved', false)
           .eq('reviewed', false)
           .order('created_at', { ascending: true })
@@ -214,9 +228,18 @@
       async function loadFlaggedNames() {
         const { data, error } = await db
           .from('parks')
-          .select('id, name, latitude, longitude');
+          .select('id, name, latitude, longitude')
+          .eq('name_reviewed', false);
         if (error) throw error;
         return data.filter(p => leoProfanity.check(p.name));
+      }
+
+      async function markNameReviewed(id) {
+        const { error } = await db
+          .from('parks')
+          .update({ name_reviewed: true })
+          .eq('id', id);
+        if (error) throw error;
       }
 
       async function updatePark(id, name, latitude, longitude) {
@@ -344,14 +367,32 @@
         if (photos.length === 0) return '<p class="empty">No pending photos.</p>';
         const cards = photos.map(p => {
           const url = `${SUPABASE_URL}/storage/v1/object/public/park-photos/${p.storage_path}`;
-          const parkName = p.parks?.name ?? 'Unknown park';
+          const park = p.parks ?? {};
+          const parkName = park.name ?? 'Unknown park';
+          const attrs = park.attributes ?? {};
           const date = new Date(p.created_at).toLocaleDateString();
+
+          const tags = [
+            attrs.parkType ? PARK_TYPE_LABELS[attrs.parkType] : null,
+            attrs.surfaceType ? SURFACE_LABELS[attrs.surfaceType] : null,
+            attrs.sunExposure ? SUN_LABELS[attrs.sunExposure] : null,
+            attrs.drainageQuality ? DRAINAGE_LABELS[attrs.drainageQuality] : null,
+          ].filter(Boolean).map(t => `<span class="photo-card-tag">${escHtml(t)}</span>`).join('');
+
+          const coords = (park.latitude != null && park.longitude != null)
+            ? `<div>${park.latitude.toFixed(4)}, ${park.longitude.toFixed(4)}</div>`
+            : '';
+
           return `
             <div class="photo-card" id="photo-${p.id}">
               <img src="${url}" alt="${escHtml(parkName)}" loading="lazy" />
               <div class="photo-card-body">
                 <div class="photo-card-park">${escHtml(parkName)}</div>
-                <div class="photo-card-meta">Submitted ${date}</div>
+                <div class="photo-card-meta">
+                  ${tags}
+                  ${coords}
+                  <div>Submitted ${date}</div>
+                </div>
                 <div class="photo-card-actions">
                   <button class="btn-approve" data-action="approve" data-id="${p.id}">Approve</button>
                   <button class="btn-reject" data-action="reject" data-id="${p.id}" data-path="${escAttr(p.storage_path)}">Reject</button>
@@ -393,7 +434,26 @@
 
       function renderNames(flagged) {
         if (flagged.length === 0) return '<p class="empty">No flagged names.</p>';
-        const rows = flagged.map(p => renderParkRow(p, false, true)).join('');
+        const rows = flagged.map(p => {
+          const lat = p.latitude.toFixed(5);
+          const lng = p.longitude.toFixed(5);
+          return `
+            <tr id="name-row-${p.id}">
+              <td>${escHtml(p.name)}<span class="flag-badge">profanity</span></td>
+              <td>${lat}</td>
+              <td>${lng}</td>
+              <td>
+                <div class="park-actions">
+                  <button class="btn-approve" data-action="accept-name" data-id="${p.id}">Accept</button>
+                  <button class="btn-cancel" data-action="dismiss-name" data-id="${p.id}">Dismiss</button>
+                  <button class="btn-edit" data-action="edit-park"
+                    data-id="${p.id}" data-name="${escAttr(p.name)}"
+                    data-lat="${p.latitude}" data-lng="${p.longitude}">Edit</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
         return `
           <div class="table-scroll">
             <table>
@@ -535,6 +595,15 @@
           try {
             await rejectPhoto(btn.dataset.id, btn.dataset.path);
             removePhotoCard(btn.dataset.id);
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'accept-name' || action === 'dismiss-name') {
+          btn.disabled = true;
+          try {
+            await markNameReviewed(btn.dataset.id);
+            document.getElementById(`name-row-${btn.dataset.id}`)?.remove();
           } catch (err) { alert(err.message); btn.disabled = false; }
           return;
         }
