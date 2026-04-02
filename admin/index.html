@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Skateable Admin</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: -apple-system, sans-serif; background: #0f0f0f; color: #f0f0f0; min-height: 100vh; }
+
+      header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 32px; border-bottom: 1px solid #222;
+      }
+      header h1 { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+
+      #login { max-width: 360px; margin: 80px auto; padding: 0 24px; }
+      #login h2 { font-size: 22px; font-weight: 700; margin-bottom: 24px; }
+      label { display: block; font-size: 13px; color: #888; margin-bottom: 6px; }
+      input[type="email"], input[type="password"], input[type="text"], input[type="number"] {
+        width: 100%; padding: 10px 12px; background: #1a1a1a; border: 1px solid #333;
+        border-radius: 8px; color: #f0f0f0; font-size: 14px; outline: none;
+      }
+      input:focus { border-color: #4ade80; }
+      .field { margin-bottom: 16px; }
+
+      button {
+        padding: 10px 18px; border: none; border-radius: 8px; font-size: 14px;
+        font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+      }
+      button:hover { opacity: 0.85; }
+      button:disabled { opacity: 0.4; cursor: default; }
+      .btn-primary { background: #4ade80; color: #0f0f0f; }
+      .btn-approve { background: #4ade80; color: #0f0f0f; }
+      .btn-reject  { background: #ef4444; color: #fff; }
+      .btn-edit    { background: #1a1a1a; color: #f0f0f0; border: 1px solid #333; }
+      .btn-save    { background: #4ade80; color: #0f0f0f; }
+      .btn-cancel  { background: #1a1a1a; color: #888; border: 1px solid #333; }
+      .btn-logout  { background: transparent; color: #555; border: 1px solid #333; font-size: 13px; padding: 6px 12px; }
+
+      #main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+      section { margin-bottom: 48px; }
+      section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: #4ade80; margin-bottom: 20px; }
+
+      .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+      .photo-card { background: #1a1a1a; border-radius: 12px; overflow: hidden; }
+      .photo-card img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; background: #111; }
+      .photo-card-body { padding: 14px; }
+      .photo-card-park { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+      .photo-card-meta { font-size: 12px; color: #555; margin-bottom: 12px; }
+      .photo-card-actions { display: flex; gap: 8px; }
+      .photo-card-actions button { flex: 1; padding: 8px; font-size: 13px; }
+
+      .flag-badge {
+        display: inline-block; background: #7c2d12; color: #fca5a5;
+        font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+        margin-left: 8px; vertical-align: middle;
+      }
+
+      table { width: 100%; border-collapse: collapse; }
+      th { text-align: left; font-size: 12px; color: #555; font-weight: 500; padding: 8px 12px; border-bottom: 1px solid #222; }
+      td { padding: 10px 12px; font-size: 14px; border-bottom: 1px solid #1a1a1a; vertical-align: middle; }
+      tr:hover td { background: #151515; }
+      td input { width: 100%; padding: 6px 8px; }
+      .park-actions { display: flex; gap: 8px; }
+      .park-actions button { padding: 6px 12px; font-size: 13px; }
+
+      .empty { color: #444; font-size: 14px; padding: 24px 0; }
+      .error { color: #ef4444; font-size: 14px; margin-top: 12px; }
+      .loading { color: #555; font-size: 14px; padding: 24px 0; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      // ─── Config: replace with your project values before uploading ────────────
+      const SUPABASE_URL = 'https://syscazwyemlsyiuelwhj.supabase.co';
+      const SUPABASE_ANON_KEY = 'sb_publishable_FOHAV9G4G07u7dluamu7ig_KJ5si4X7';
+      // ──────────────────────────────────────────────────────────────────────────
+
+      import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+      import leoProfanity from 'https://esm.sh/leo-profanity';
+      leoProfanity.loadDictionary('en');
+
+      const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      let currentUser = null;
+      let allParks = [];
+
+      // ─── Auth ────────────────────────────────────────────────────────────────
+
+      async function login(email, password) {
+        const { data, error } = await db.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        return data.user;
+      }
+
+      async function logout() {
+        await db.auth.signOut();
+        currentUser = null;
+        render();
+      }
+
+      // ─── Photos ──────────────────────────────────────────────────────────────
+
+      async function loadPendingPhotos() {
+        const { data, error } = await db
+          .from('park_photos')
+          .select('id, park_id, storage_path, created_at, parks(name)')
+          .eq('approved', false)
+          .eq('reviewed', false)
+          .order('created_at', { ascending: true })
+          .limit(100);
+        if (error) throw error;
+        return data;
+      }
+
+      async function approvePhoto(id) {
+        const { error } = await db
+          .from('park_photos')
+          .update({ approved: true, reviewed: true })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      async function rejectPhoto(id, storagePath) {
+        const { error: storageError } = await db.storage
+          .from('park-photos')
+          .remove([storagePath]);
+        if (storageError) throw storageError;
+        const { error: dbError } = await db
+          .from('park_photos')
+          .update({ approved: false, reviewed: true })
+          .eq('id', id);
+        if (dbError) throw dbError;
+      }
+
+      // ─── Parks ───────────────────────────────────────────────────────────────
+
+      async function loadParks() {
+        const { data, error } = await db
+          .from('parks')
+          .select('id, name, latitude, longitude, created_at')
+          .order('name', { ascending: true });
+        if (error) throw error;
+        allParks = data;
+        return data;
+      }
+
+      async function updatePark(id, name, latitude, longitude) {
+        const lat = parseFloat(latitude);
+        const lng = parseFloat(longitude);
+        if (!name.trim()) throw new Error('Name is required');
+        if (isNaN(lat) || lat < -90 || lat > 90) throw new Error('Latitude must be between -90 and 90');
+        if (isNaN(lng) || lng < -180 || lng > 180) throw new Error('Longitude must be between -180 and 180');
+        const { error } = await db
+          .from('parks')
+          .update({ name: name.trim(), latitude: lat, longitude: lng })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      // ─── Render ──────────────────────────────────────────────────────────────
+
+      function render() {
+        document.getElementById('app').innerHTML = currentUser ? renderMain() : renderLogin();
+        if (!currentUser) bindLoginForm();
+      }
+
+      function renderLogin() {
+        return `
+          <header>
+            <h1>SKATEABLE.</h1>
+            <span style="color:#555;font-size:13px">Admin</span>
+          </header>
+          <div id="login">
+            <h2>Sign in</h2>
+            <div class="field">
+              <label for="email">Email</label>
+              <input type="email" id="email" autocomplete="email" />
+            </div>
+            <div class="field">
+              <label for="password">Password</label>
+              <input type="password" id="password" autocomplete="current-password" />
+            </div>
+            <button class="btn-primary" id="login-btn" style="width:100%">Sign in</button>
+            <div id="login-error" class="error"></div>
+          </div>
+        `;
+      }
+
+      function renderMain() {
+        return `
+          <header>
+            <h1>SKATEABLE. <span style="color:#555;font-weight:400">Admin</span></h1>
+            <button class="btn-logout" id="logout-btn">Sign out</button>
+          </header>
+          <div id="main">
+            <section>
+              <h2>Photos to review</h2>
+              <div id="photos-content" class="loading">Loading…</div>
+            </section>
+            <section>
+              <h2>Name review</h2>
+              <div id="names-content" class="loading">Loading…</div>
+            </section>
+            <section>
+              <h2>Parks</h2>
+              <div id="parks-content" class="loading">Loading…</div>
+            </section>
+          </div>
+        `;
+      }
+
+      function renderPhotos(photos) {
+        if (photos.length === 0) return '<p class="empty">No pending photos.</p>';
+        const cards = photos.map(p => {
+          const url = `${SUPABASE_URL}/storage/v1/object/public/park-photos/${p.storage_path}`;
+          const parkName = p.parks?.name ?? 'Unknown park';
+          const date = new Date(p.created_at).toLocaleDateString();
+          return `
+            <div class="photo-card" id="photo-${p.id}">
+              <img src="${url}" alt="${escHtml(parkName)}" loading="lazy" />
+              <div class="photo-card-body">
+                <div class="photo-card-park">${escHtml(parkName)}</div>
+                <div class="photo-card-meta">Submitted ${date}</div>
+                <div class="photo-card-actions">
+                  <button class="btn-approve" data-action="approve" data-id="${p.id}">Approve</button>
+                  <button class="btn-reject" data-action="reject" data-id="${p.id}" data-path="${escAttr(p.storage_path)}">Reject</button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        return `<div class="photo-grid">${cards}</div>`;
+      }
+
+      function renderNames(flagged) {
+        if (flagged.length === 0) return '<p class="empty">No flagged names.</p>';
+        const rows = flagged.map(p => renderParkRow(p, false, true)).join('');
+        return `
+          <table>
+            <thead><tr><th>Name</th><th>Latitude</th><th>Longitude</th><th></th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+      }
+
+      function renderParks(parks) {
+        if (parks.length === 0) return '<p class="empty">No parks found.</p>';
+        const rows = parks.map(p => renderParkRow(p)).join('');
+        return `
+          <table>
+            <thead><tr><th>Name</th><th>Latitude</th><th>Longitude</th><th></th></tr></thead>
+            <tbody id="parks-body">${rows}</tbody>
+          </table>
+        `;
+      }
+
+      function renderParkRow(p, editing = false, flagged = false) {
+        const id = p.id;
+        if (editing) {
+          return `
+            <tr id="park-row-${id}">
+              <td><input type="text" id="edit-name-${id}" value="${escAttr(p.name)}" /></td>
+              <td><input type="number" id="edit-lat-${id}" value="${p.latitude}" step="any" /></td>
+              <td><input type="number" id="edit-lng-${id}" value="${p.longitude}" step="any" /></td>
+              <td>
+                <div class="park-actions">
+                  <button class="btn-save" data-action="save-park" data-id="${id}">Save</button>
+                  <button class="btn-cancel" data-action="cancel-park" data-id="${id}">Cancel</button>
+                </div>
+                <div id="park-error-${id}" class="error"></div>
+              </td>
+            </tr>
+          `;
+        }
+        const badge = flagged ? '<span class="flag-badge">profanity</span>' : '';
+        return `
+          <tr id="park-row-${id}">
+            <td>${escHtml(p.name)}${badge}</td>
+            <td>${p.latitude}</td>
+            <td>${p.longitude}</td>
+            <td>
+              <div class="park-actions">
+                <button class="btn-edit" data-action="edit-park"
+                  data-id="${id}" data-name="${escAttr(p.name)}"
+                  data-lat="${p.latitude}" data-lng="${p.longitude}">Edit</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }
+
+      // ─── Content loaders ─────────────────────────────────────────────────────
+
+      async function loadContent() {
+        await Promise.all([loadPhotosSection(), loadParksAndNamesSection()]);
+      }
+
+      async function loadPhotosSection() {
+        const el = document.getElementById('photos-content');
+        if (!el) return;
+        try {
+          el.innerHTML = renderPhotos(await loadPendingPhotos());
+        } catch (err) {
+          el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
+        }
+      }
+
+      async function loadParksAndNamesSection() {
+        const parksEl = document.getElementById('parks-content');
+        const namesEl = document.getElementById('names-content');
+        if (!parksEl || !namesEl) return;
+        try {
+          const parks = await loadParks();
+          const flagged = parks.filter(p => leoProfanity.check(p.name));
+          namesEl.innerHTML = renderNames(flagged);
+          parksEl.innerHTML = renderParks(parks);
+        } catch (err) {
+          const msg = `<p class="error">${escHtml(err.message)}</p>`;
+          parksEl.innerHTML = msg;
+          namesEl.innerHTML = msg;
+        }
+      }
+
+      // ─── Event delegation ────────────────────────────────────────────────────
+
+      document.addEventListener('click', async e => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+
+        if (action === 'logout') { logout(); return; }
+
+        if (action === 'approve') {
+          btn.disabled = true;
+          try {
+            await approvePhoto(btn.dataset.id);
+            removePhotoCard(btn.dataset.id);
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'reject') {
+          if (!confirm('Delete this photo and mark as rejected?')) return;
+          btn.disabled = true;
+          try {
+            await rejectPhoto(btn.dataset.id, btn.dataset.path);
+            removePhotoCard(btn.dataset.id);
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'edit-park') {
+          const { id, name, lat, lng } = btn.dataset;
+          const row = document.getElementById(`park-row-${id}`);
+          if (row) {
+            row.outerHTML = renderParkRow(
+              { id, name, latitude: lat, longitude: lng }, true
+            );
+            document.getElementById(`edit-name-${id}`)?.focus();
+          }
+          return;
+        }
+
+        if (action === 'save-park') {
+          const id = btn.dataset.id;
+          const name = document.getElementById(`edit-name-${id}`)?.value ?? '';
+          const lat  = document.getElementById(`edit-lat-${id}`)?.value ?? '';
+          const lng  = document.getElementById(`edit-lng-${id}`)?.value ?? '';
+          const errEl = document.getElementById(`park-error-${id}`);
+          btn.disabled = true;
+          errEl.textContent = '';
+          try {
+            await updatePark(id, name, lat, lng);
+            loadParksAndNamesSection();
+          } catch (err) { errEl.textContent = err.message; btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'cancel-park') {
+          loadParksAndNamesSection();
+          return;
+        }
+      });
+
+      // ─── Login form ──────────────────────────────────────────────────────────
+
+      function bindLoginForm() {
+        const btn = document.getElementById('login-btn');
+        const errEl = document.getElementById('login-error');
+        if (!btn) return;
+
+        async function submit() {
+          const email = document.getElementById('email').value.trim();
+          const password = document.getElementById('password').value;
+          btn.disabled = true;
+          errEl.textContent = '';
+          try {
+            currentUser = await login(email, password);
+            render();
+            loadContent();
+          } catch (err) {
+            errEl.textContent = err.message;
+            btn.disabled = false;
+          }
+        }
+
+        btn.addEventListener('click', submit);
+        document.getElementById('password').addEventListener('keydown', e => {
+          if (e.key === 'Enter') submit();
+        });
+      }
+
+      // ─── Utils ───────────────────────────────────────────────────────────────
+
+      function removePhotoCard(id) {
+        document.getElementById(`photo-${id}`)?.remove();
+        if (!document.querySelector('.photo-card')) {
+          const grid = document.querySelector('.photo-grid');
+          if (grid) grid.outerHTML = '<p class="empty">No pending photos.</p>';
+        }
+      }
+
+      function escHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      function escAttr(str) {
+        return String(str).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+      }
+
+      // ─── Init ────────────────────────────────────────────────────────────────
+
+      // Handle magic link tokens in the URL hash (exchanged automatically by the client)
+      db.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session && !currentUser) {
+          currentUser = session.user;
+          render();
+          loadContent();
+        }
+      });
+
+      const { data } = await db.auth.getSession();
+      currentUser = data.session?.user ?? null;
+      render();
+      if (currentUser) loadContent();
+    </script>
+  </body>
+</html>
