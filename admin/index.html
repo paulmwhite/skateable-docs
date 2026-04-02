@@ -29,16 +29,18 @@
       button {
         padding: 10px 18px; border: none; border-radius: 8px; font-size: 14px;
         font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+        min-height: 44px;
       }
       button:hover { opacity: 0.85; }
       button:disabled { opacity: 0.4; cursor: default; }
       .btn-primary { background: #4ade80; color: #0f0f0f; }
       .btn-approve { background: #4ade80; color: #0f0f0f; }
       .btn-reject  { background: #ef4444; color: #fff; }
+      .btn-delete  { background: #ef4444; color: #fff; }
       .btn-edit    { background: #1a1a1a; color: #f0f0f0; border: 1px solid #333; }
       .btn-save    { background: #4ade80; color: #0f0f0f; }
       .btn-cancel  { background: #1a1a1a; color: #888; border: 1px solid #333; }
-      .btn-logout  { background: transparent; color: #555; border: 1px solid #333; font-size: 13px; padding: 6px 12px; }
+      .btn-logout  { background: transparent; color: #555; border: 1px solid #333; font-size: 13px; padding: 6px 12px; min-height: 36px; }
 
       #main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
 
@@ -60,29 +62,51 @@
         margin-left: 8px; vertical-align: middle;
       }
 
-      table { width: 100%; border-collapse: collapse; }
+      .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      table { width: 100%; border-collapse: collapse; min-width: 480px; }
       th { text-align: left; font-size: 12px; color: #555; font-weight: 500; padding: 8px 12px; border-bottom: 1px solid #222; }
       td { padding: 10px 12px; font-size: 14px; border-bottom: 1px solid #1a1a1a; vertical-align: middle; }
       tr:hover td { background: #151515; }
       td input { width: 100%; padding: 6px 8px; }
       .park-actions { display: flex; gap: 8px; }
-      .park-actions button { padding: 6px 12px; font-size: 13px; }
+      .park-actions button { padding: 6px 12px; font-size: 13px; min-height: 36px; }
+
+      /* Duplicate pairs */
+      .dup-list { display: flex; flex-direction: column; gap: 12px; }
+      .dup-card {
+        background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px;
+        padding: 16px;
+      }
+      .dup-parks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+      .dup-park { background: #111; border-radius: 8px; padding: 12px; }
+      .dup-park-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+      .dup-park-coords { font-size: 12px; color: #555; }
+      .dup-footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .dup-distance { font-size: 12px; color: #888; margin-right: auto; }
+      .dup-footer button { padding: 7px 14px; font-size: 13px; min-height: 36px; }
 
       .empty { color: #444; font-size: 14px; padding: 24px 0; }
       .error { color: #ef4444; font-size: 14px; margin-top: 12px; }
       .loading { color: #555; font-size: 14px; padding: 24px 0; }
-      .pagination { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+      .pagination { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
       .page-info { font-size: 13px; color: #555; }
+
+      @media (max-width: 600px) {
+        header { padding: 14px 16px; }
+        #main { padding: 24px 16px; }
+        .dup-parks { grid-template-columns: 1fr; }
+        .photo-grid { grid-template-columns: 1fr; }
+        .pagination button { flex: 1; }
+      }
     </style>
   </head>
   <body>
     <div id="app"></div>
 
     <script type="module">
-      // ─── Config: replace with your project values before uploading ────────────
+      // ─── Config ───────────────────────────────────────────────────────────────
       const SUPABASE_URL = 'https://syscazwyemlsyiuelwhj.supabase.co';
       const SUPABASE_ANON_KEY = 'sb_publishable_FOHAV9G4G07u7dluamu7ig_KJ5si4X7';
-      // ──────────────────────────────────────────────────────────────────────────
 
       import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
       import leoProfanity from 'https://esm.sh/leo-profanity';
@@ -91,9 +115,9 @@
       const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
       const PARKS_PER_PAGE = 25;
+      const DUPLICATE_THRESHOLD_METERS = 300;
 
       let currentUser = null;
-      let allParks = [];
       let parksPage = 0;
 
       // ─── Auth ────────────────────────────────────────────────────────────────
@@ -179,6 +203,52 @@
         if (error) throw error;
       }
 
+      async function deletePark(id) {
+        const { error } = await db.from('parks').delete().eq('id', id);
+        if (error) throw error;
+      }
+
+      // ─── Duplicates ──────────────────────────────────────────────────────────
+
+      function haversineMeters(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      async function loadDuplicateCandidates() {
+        const { data, error } = await db
+          .from('parks')
+          .select('id, name, latitude, longitude')
+          .eq('duplicate_reviewed', false);
+        if (error) throw error;
+        const pairs = [];
+        for (let i = 0; i < data.length; i++) {
+          for (let j = i + 1; j < data.length; j++) {
+            const dist = haversineMeters(
+              data[i].latitude, data[i].longitude,
+              data[j].latitude, data[j].longitude
+            );
+            if (dist <= DUPLICATE_THRESHOLD_METERS) {
+              pairs.push({ a: data[i], b: data[j], distanceMeters: Math.round(dist) });
+            }
+          }
+        }
+        return pairs;
+      }
+
+      async function markDuplicateReviewed(idA, idB) {
+        const { error } = await db
+          .from('parks')
+          .update({ duplicate_reviewed: true })
+          .in('id', [idA, idB]);
+        if (error) throw error;
+      }
+
       // ─── Render ──────────────────────────────────────────────────────────────
 
       function render() {
@@ -214,13 +284,20 @@
       function renderMain() {
         return `
           <header>
-            <h1>SKATEABLE. <span style="color:#555;font-weight:400">Admin</span></h1>
-            <button class="btn-logout" id="logout-btn">Sign out</button>
+            <div class="header-brand">
+              <img src="../icon.png" alt="" class="header-logo" />
+              <h1>SKATEABLE. <span style="color:#555;font-weight:400">Admin</span></h1>
+            </div>
+            <button class="btn-logout" data-action="logout">Sign out</button>
           </header>
           <div id="main">
             <section>
               <h2>Photos to review</h2>
               <div id="photos-content" class="loading">Loading…</div>
+            </section>
+            <section>
+              <h2>Potential duplicates</h2>
+              <div id="duplicates-content" class="loading">Loading…</div>
             </section>
             <section>
               <h2>Name review</h2>
@@ -257,14 +334,44 @@
         return `<div class="photo-grid">${cards}</div>`;
       }
 
+      function renderDuplicates(pairs) {
+        if (pairs.length === 0) return '<p class="empty">No potential duplicates found.</p>';
+        const cards = pairs.map(({ a, b, distanceMeters }) => `
+          <div class="dup-card" id="dup-${a.id}-${b.id}">
+            <div class="dup-parks">
+              <div class="dup-park">
+                <div class="dup-park-name">${escHtml(a.name)}</div>
+                <div class="dup-park-coords">${a.latitude.toFixed(5)}, ${a.longitude.toFixed(5)}</div>
+              </div>
+              <div class="dup-park">
+                <div class="dup-park-name">${escHtml(b.name)}</div>
+                <div class="dup-park-coords">${b.latitude.toFixed(5)}, ${b.longitude.toFixed(5)}</div>
+              </div>
+            </div>
+            <div class="dup-footer">
+              <span class="dup-distance">${distanceMeters}m apart</span>
+              <button class="btn-delete" data-action="delete-park"
+                data-id="${a.id}" data-dup-pair="${a.id}-${b.id}">Delete ${escHtml(a.name)}</button>
+              <button class="btn-delete" data-action="delete-park"
+                data-id="${b.id}" data-dup-pair="${a.id}-${b.id}">Delete ${escHtml(b.name)}</button>
+              <button class="btn-edit" data-action="not-duplicates"
+                data-id-a="${a.id}" data-id-b="${b.id}">Not duplicates</button>
+            </div>
+          </div>
+        `).join('');
+        return `<div class="dup-list">${cards}</div>`;
+      }
+
       function renderNames(flagged) {
         if (flagged.length === 0) return '<p class="empty">No flagged names.</p>';
         const rows = flagged.map(p => renderParkRow(p, false, true)).join('');
         return `
-          <table>
-            <thead><tr><th>Name</th><th>Latitude</th><th>Longitude</th><th></th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Name</th><th>Latitude</th><th>Longitude</th><th></th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
         `;
       }
 
@@ -275,10 +382,12 @@
         const start = page * PARKS_PER_PAGE + 1;
         const end = start + parks.length - 1;
         return `
-          <table>
-            <thead><tr><th>Name</th><th>Latitude</th><th>Longitude</th><th></th></tr></thead>
-            <tbody id="parks-body">${rows}</tbody>
-          </table>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Name</th><th>Latitude</th><th>Longitude</th><th></th></tr></thead>
+              <tbody id="parks-body">${rows}</tbody>
+            </table>
+          </div>
           <div class="pagination">
             <button class="btn-edit" data-action="parks-prev" ${page === 0 ? 'disabled' : ''}>← Prev</button>
             <span class="page-info">${start}–${end} of ${total}</span>
@@ -325,7 +434,11 @@
       // ─── Content loaders ─────────────────────────────────────────────────────
 
       async function loadContent() {
-        await Promise.all([loadPhotosSection(), loadParksAndNamesSection()]);
+        await Promise.all([
+          loadPhotosSection(),
+          loadDuplicatesSection(),
+          loadParksAndNamesSection(),
+        ]);
       }
 
       async function loadPhotosSection() {
@@ -333,6 +446,16 @@
         if (!el) return;
         try {
           el.innerHTML = renderPhotos(await loadPendingPhotos());
+        } catch (err) {
+          el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
+        }
+      }
+
+      async function loadDuplicatesSection() {
+        const el = document.getElementById('duplicates-content');
+        if (!el) return;
+        try {
+          el.innerHTML = renderDuplicates(await loadDuplicateCandidates());
         } catch (err) {
           el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
         }
@@ -381,6 +504,26 @@
           try {
             await rejectPhoto(btn.dataset.id, btn.dataset.path);
             removePhotoCard(btn.dataset.id);
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'not-duplicates') {
+          btn.disabled = true;
+          try {
+            await markDuplicateReviewed(btn.dataset.idA, btn.dataset.idB);
+            document.getElementById(`dup-${btn.dataset.idA}-${btn.dataset.idB}`)?.remove();
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'delete-park') {
+          if (!confirm('Delete this park? This cannot be undone.')) return;
+          btn.disabled = true;
+          try {
+            await deletePark(btn.dataset.id);
+            document.getElementById(`dup-${btn.dataset.dupPair}`)?.remove();
+            loadParksAndNamesSection();
           } catch (err) { alert(err.message); btn.disabled = false; }
           return;
         }
@@ -478,7 +621,6 @@
 
       // ─── Init ────────────────────────────────────────────────────────────────
 
-      // Handle magic link tokens in the URL hash (exchanged automatically by the client)
       db.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session && !currentUser) {
           currentUser = session.user;
