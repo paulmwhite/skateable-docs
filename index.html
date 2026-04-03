@@ -65,6 +65,76 @@
         color: #888;
         line-height: 1.6;
       }
+      /* Engine section */
+      .engine-section {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 0 24px 80px;
+      }
+      .engine-card {
+        background: linear-gradient(135deg, #0d2e18 0%, #0d1f3c 100%);
+        border: 1px solid #1a4d2a;
+        border-radius: 12px;
+        padding: 36px 32px;
+      }
+      .engine-card .label {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #4ade80;
+        margin-bottom: 14px;
+      }
+      .engine-card h2 {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 14px;
+        letter-spacing: -0.3px;
+      }
+      .engine-card p {
+        font-size: 15px;
+        color: #999;
+        line-height: 1.6;
+        margin-bottom: 12px;
+      }
+      .engine-pillars {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin: 24px 0 28px;
+      }
+      .engine-pillar {
+        background: rgba(0,0,0,0.25);
+        border-radius: 8px;
+        padding: 18px 16px;
+      }
+      .engine-pillar strong {
+        display: block;
+        font-size: 14px;
+        color: #f0f0f0;
+        margin-bottom: 4px;
+      }
+      .engine-pillar span {
+        font-size: 13px;
+        color: #888;
+        line-height: 1.5;
+      }
+      .engine-link {
+        display: inline-block;
+        font-size: 14px;
+        font-weight: 600;
+        color: #4ade80;
+        text-decoration: none;
+        padding: 10px 20px;
+        border: 1px solid #1a4d2a;
+        border-radius: 8px;
+        transition: background 0.15s ease;
+      }
+      .engine-link:hover {
+        background: rgba(74, 222, 128, 0.08);
+      }
+
       footer {
         display: flex;
         flex-wrap: wrap;
@@ -124,6 +194,35 @@
       <div class="feature">
         <h2>No account needed</h2>
         <p>Add locations and log sessions immediately. No sign-up, no email, no password.</p>
+      </div>
+    </div>
+
+    <div class="engine-section">
+      <div class="engine-card">
+        <span class="label">Under the hood</span>
+        <h2>The Skateboarding Dryness Engine</h2>
+        <p>
+          Every score in Skateable is powered by the SDE — a physics-based
+          model built on the same thermodynamic equations meteorologists use
+          to predict evaporation. Combined with Bayesian inference and
+          community ground truth, it turns weather data into a dryness
+          prediction you can trust.
+        </p>
+        <div class="engine-pillars">
+          <div class="engine-pillar">
+            <strong>Thermodynamics</strong>
+            <span>Vapour pressure deficit, solar radiation, and wind-driven evaporation</span>
+          </div>
+          <div class="engine-pillar">
+            <strong>Surface physics</strong>
+            <span>Porosity, albedo, drainage, and sun exposure per spot</span>
+          </div>
+          <div class="engine-pillar">
+            <strong>Community data</strong>
+            <span>Bayesian nudge from real skater reports calibrates the model</span>
+          </div>
+        </div>
+        <a class="engine-link" href="/engine">Read the full SDE breakdown &rarr;</a>
       </div>
     </div>
 
