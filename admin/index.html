@@ -175,6 +175,13 @@
         transition: background 0.1s;
       }
 
+      @media (max-width: 600px) {
+        .summary-bar {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
       .summary-chip[data-target-section] { cursor: pointer; }
 
       .summary-chip[data-target-section]:hover {
@@ -1838,6 +1845,7 @@
           try {
             await approvePhoto(btn.dataset.id);
             removePhotoCard(btn.dataset.id);
+            decrementSummaryChip('summary-photos');
           } catch (err) { alert(err.message); btn.disabled = false; }
           return;
         }
@@ -1848,6 +1856,7 @@
           try {
             await rejectPhoto(btn.dataset.id, btn.dataset.path);
             removePhotoCard(btn.dataset.id);
+            decrementSummaryChip('summary-photos');
           } catch (err) { alert(err.message); btn.disabled = false; }
           return;
         }
@@ -1857,6 +1866,7 @@
           try {
             await markNameReviewed(btn.dataset.id);
             document.getElementById(`name-row-${btn.dataset.id}`)?.remove();
+            decrementSummaryChip('summary-names');
           } catch (err) { alert(err.message); btn.disabled = false; }
           return;
         }
@@ -1868,6 +1878,7 @@
             await dismissFlag(btn.dataset.id);
             flagRowData.delete(btn.dataset.id);
             document.getElementById(`flag-row-${btn.dataset.id}`)?.remove();
+            decrementSummaryChip('summary-flags');
             if (!document.querySelector('#flags-body tr')) {
               document.getElementById('flags-content').innerHTML =
                 '<p class="empty">No park flags.</p>';
@@ -1949,6 +1960,7 @@
             flagRowData.delete(id);
             document.getElementById(`flag-row-${id}`)?.remove();
             document.getElementById(`detail-row-flag-${id}`)?.remove();
+            decrementSummaryChip('summary-flags');
             if (!document.querySelector('#flags-body tr')) {
               document.getElementById('flags-content').innerHTML =
                 '<p class="empty">No park flags.</p>';
@@ -1982,6 +1994,7 @@
             flagRowData.delete(id);
             document.getElementById(`flag-row-${id}`)?.remove();
             document.getElementById(`detail-row-flag-${id}`)?.remove();
+            decrementSummaryChip('summary-flags');
             if (!document.querySelector('#flags-body tr')) {
               document.getElementById('flags-content').innerHTML =
                 '<p class="empty">No park flags.</p>';
@@ -1995,6 +2008,7 @@
           try {
             await markDuplicateReviewed(btn.dataset.idA, btn.dataset.idB);
             document.getElementById(`dup-${btn.dataset.idA}-${btn.dataset.idB}`)?.remove();
+            decrementSummaryChip('summary-duplicates');
           } catch (err) { alert(err.message); btn.disabled = false; }
           return;
         }
@@ -2005,6 +2019,7 @@
           try {
             await deletePark(btn.dataset.id);
             document.getElementById(`dup-${btn.dataset.dupPair}`)?.remove();
+            decrementSummaryChip('summary-duplicates');
             loadParksAndNamesSection();
           } catch (err) { alert(err.message); btn.disabled = false; }
           return;
@@ -2167,6 +2182,14 @@
           badgeEl.textContent = count;
           badgeEl.classList.toggle('visible', count > 0);
         }
+      }
+
+      function decrementSummaryChip(id) {
+        const countEl = document.querySelector(`#${id} .summary-count`);
+        if (!countEl) return;
+        const current = parseInt(countEl.textContent, 10);
+        if (isNaN(current)) return;
+        updateSummaryChip(id, Math.max(0, current - 1));
       }
 
       function removePhotoCard(id) {
