@@ -52,7 +52,16 @@
       .summary-chip {
         background: #1a1a1a; border: 1px solid #222; border-radius: 8px;
         padding: 12px 16px; font-size: 13px; color: #888; min-width: 120px;
+        cursor: default;
       }
+      .summary-chip[data-target-section] { cursor: pointer; }
+      .summary-chip[data-target-section]:hover { border-color: #3b82f6; }
+      .section-badge {
+        display: none; background: #f59e0b; color: #0f0f0f;
+        font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 10px;
+        margin-left: 8px; vertical-align: middle;
+      }
+      .section-badge.visible { display: inline; }
       .summary-count { font-size: 22px; font-weight: 700; color: #f0f0f0; display: block; margin-bottom: 2px; }
       .summary-count.loading { color: #2a2a2a; }
       .summary-count.nonzero { color: #f59e0b; }
@@ -558,19 +567,19 @@
           </header>
           <div id="main">
             <div class="summary-bar">
-              <div class="summary-chip" id="summary-photos">
+              <div class="summary-chip" id="summary-photos" data-target-section="details-photos">
                 <span class="summary-count loading">—</span>
                 photos to review
               </div>
-              <div class="summary-chip" id="summary-duplicates">
+              <div class="summary-chip" id="summary-duplicates" data-target-section="details-duplicates">
                 <span class="summary-count loading">—</span>
                 potential duplicates
               </div>
-              <div class="summary-chip" id="summary-names">
+              <div class="summary-chip" id="summary-names" data-target-section="details-names">
                 <span class="summary-count loading">—</span>
                 flagged names
               </div>
-              <div class="summary-chip" id="summary-flags">
+              <div class="summary-chip" id="summary-flags" data-target-section="details-flags">
                 <span class="summary-count loading">—</span>
                 park flags
               </div>
@@ -582,14 +591,14 @@
               </details>
             </section>
             <section>
-              <details>
-                <summary><h2>Photos to review <span class="section-caret">▶</span></h2></summary>
+              <details id="details-photos">
+                <summary><h2>Photos to review<span class="section-badge" id="badge-photos"></span> <span class="section-caret">▶</span></h2></summary>
                 <div id="photos-content" class="loading">Loading…</div>
               </details>
             </section>
             <section>
-              <details>
-                <summary><h2>Potential duplicates <span class="section-caret">▶</span></h2></summary>
+              <details id="details-duplicates">
+                <summary><h2>Potential duplicates<span class="section-badge" id="badge-duplicates"></span> <span class="section-caret">▶</span></h2></summary>
                 <div id="duplicates-content" class="loading">Loading…</div>
               </details>
             </section>
@@ -600,14 +609,14 @@
               </details>
             </section>
             <section>
-              <details>
-                <summary><h2>Park flags <span class="section-caret">▶</span></h2></summary>
+              <details id="details-flags">
+                <summary><h2>Park flags<span class="section-badge" id="badge-flags"></span> <span class="section-caret">▶</span></h2></summary>
                 <div id="flags-content" class="loading">Loading…</div>
               </details>
             </section>
             <section>
-              <details>
-                <summary><h2>Name review <span class="section-caret">▶</span></h2></summary>
+              <details id="details-names">
+                <summary><h2>Name review<span class="section-badge" id="badge-names"></span> <span class="section-caret">▶</span></h2></summary>
                 <div id="names-content" class="loading">Loading…</div>
               </details>
             </section>
@@ -966,6 +975,18 @@
 
       // ─── Event delegation ────────────────────────────────────────────────────
 
+      document.addEventListener('click', e => {
+        const chip = e.target.closest('[data-target-section]');
+        if (chip) {
+          const target = document.getElementById(chip.dataset.targetSection);
+          if (target) {
+            target.open = true;
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          return;
+        }
+      });
+
       document.addEventListener('click', async e => {
         const btn = e.target.closest('[data-action]');
         if (!btn) return;
@@ -1186,6 +1207,12 @@
         countEl.textContent = count;
         countEl.classList.remove('loading');
         countEl.classList.toggle('nonzero', count > 0);
+        const badgeId = id.replace('summary-', 'badge-');
+        const badgeEl = document.getElementById(badgeId);
+        if (badgeEl) {
+          badgeEl.textContent = count;
+          badgeEl.classList.toggle('visible', count > 0);
+        }
       }
 
       function removePhotoCard(id) {
