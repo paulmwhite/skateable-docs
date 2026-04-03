@@ -457,6 +457,102 @@
       }
 
       .recent-tag.parking { color: var(--blue); background: rgba(91,156,246,0.1); }
+      .recent-tag.warn { color: var(--amber); background: rgba(245,158,11,0.1); }
+
+      .recent-card { cursor: pointer; }
+
+      /* ── Park detail panel ─────────────────────────────────────────────────── */
+      .detail-panel {
+        background: var(--s2);
+        border: 1px solid var(--b1);
+        border-radius: 8px;
+        padding: 14px 16px;
+        margin: 0 0 4px;
+      }
+
+      .park-detail { display: flex; flex-direction: column; gap: 8px; }
+
+      .detail-row {
+        display: flex;
+        gap: 10px;
+        align-items: baseline;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .detail-label {
+        font-family: var(--mono);
+        font-size: 9px;
+        font-weight: 600;
+        color: var(--dim);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        min-width: 70px;
+        flex-shrink: 0;
+      }
+
+      .detail-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+      .detail-prop {
+        display: inline-block;
+        background: var(--s3);
+        border-radius: 3px;
+        padding: 2px 7px;
+        font-size: 11px;
+        color: var(--text);
+      }
+
+      .detail-prop-label {
+        font-family: var(--mono);
+        font-size: 9px;
+        font-weight: 600;
+        color: var(--dim);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-right: 4px;
+      }
+
+      .detail-tag {
+        display: inline-block;
+        background: var(--s3);
+        color: var(--dim);
+        font-family: var(--mono);
+        font-size: 9px;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .detail-tag-warn {
+        background: rgba(245,158,11,0.12);
+        color: var(--amber);
+      }
+
+      .detail-dim {
+        font-size: 11px;
+        color: var(--muted);
+        font-style: italic;
+      }
+
+      .btn-detail {
+        background: transparent;
+        color: var(--accent);
+        border: none;
+        font-family: var(--mono);
+        font-size: 9px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 2px 4px;
+        min-height: auto;
+        cursor: pointer;
+        vertical-align: middle;
+        margin-left: 6px;
+      }
+
+      .btn-detail:hover { text-decoration: underline; }
 
       .recent-time {
         font-family: var(--mono);
@@ -537,6 +633,9 @@
         .park-actions { flex-direction: column; gap: 4px; }
         .park-actions button { min-height: 28px; }
 
+        table tr.detail-row { display: none; padding: 0; border: none; background: transparent; }
+        table tr.detail-row td { display: block; width: 100%; padding: 0; }
+
         table tr.editing-row { display: flex; flex-direction: column; gap: 8px; padding: 10px; }
         table tr.editing-row td { display: block; width: 100%; padding: 0; }
         table tr.editing-row td:nth-child(3) { display: block; }
@@ -567,9 +666,22 @@
       };
       const SURFACE_LABELS = {
         modern_smooth: 'Smooth concrete', old_concrete: 'Old concrete', rough_asphalt: 'Rough asphalt',
+        timber: 'Timber/Wood', indoor: 'Indoor', steel: 'Steel', other: 'Other',
       };
       const DRAINAGE_LABELS = { good: 'Good drainage', average: 'Avg drainage', poor: 'Poor drainage' };
       const SUN_LABELS = { direct_sun: 'Full sun', partial_sun: 'Partial sun', full_shade: 'Full shade' };
+      const FEATURE_LABELS = {
+        stairs: 'Stairs', ledges: 'Ledges', rail: 'Rail', hubba: 'Hubba',
+        flat_bank: 'Flat bank', manual_pad: 'Manual pad', flat_ground: 'Flat ground',
+        transition: 'Transition', bowl: 'Bowl', slappy_curbs: 'Slappy curbs',
+        gaps: 'Gaps', wallrides: 'Wallrides', kicker: 'Kicker', funbox: 'Funbox',
+        quarter_pipe: 'Quarter pipe', half_pipe: 'Half pipe', bump_to_bar: 'Bump to bar',
+        euro_gap: 'Euro gap', ramp_under_4ft: 'Ramp <4ft', ramp_over_4ft: 'Ramp >4ft', vert: 'Vert',
+      };
+      const WARNING_LABELS = {
+        high_snake_risk: 'High snake risk', unsupervised_groms: 'Unsupervised groms',
+        bmx_conflict: 'BMX conflict', pebble_hazard: 'Pebble hazard', no_parking: 'No parking',
+      };
       const DUPLICATE_THRESHOLD_METERS = 300;
 
       let currentUser = null;
@@ -633,7 +745,7 @@
         const to = from + PARKS_PER_PAGE - 1;
         const { data, error, count } = await db
           .from('parks')
-          .select('id, name, latitude, longitude, created_at', { count: 'exact' })
+          .select('id, name, latitude, longitude, attributes, created_at', { count: 'exact' })
           .order('created_at', { ascending: false })
           .range(from, to);
         if (error) throw error;
@@ -656,7 +768,7 @@
       async function loadParkFlags() {
         const { data, error } = await db
           .from('park_flags')
-          .select('id, park_id, reason, approved, created_at, updated_at, parks(name)')
+          .select('id, park_id, reason, approved, created_at, updated_at, parks(id, name, latitude, longitude, attributes)')
           .order('updated_at', { ascending: false })
           .limit(100);
         if (error) throw error;
@@ -720,9 +832,17 @@
           `;
         }
 
+        const hasPark = f.parks?.id != null;
+        const viewBtn = hasPark
+          ? `<button class="btn-detail" data-action="toggle-detail" data-park-id="flag-${f.id}">View park</button>`
+          : '';
+        const detailHtml = hasPark
+          ? `<tr id="detail-row-flag-${f.id}" class="detail-row" style="display:none"><td colspan="5" style="padding:0;border:none"><div class="detail-panel" id="detail-flag-${f.id}" style="display:block">${renderParkDetail(f.parks)}</div></td></tr>`
+          : '';
+
         return `
           <tr id="flag-row-${f.id}">
-            <td>${escHtml(parkName)}</td>
+            <td>${escHtml(parkName)} ${viewBtn}</td>
             <td>${escHtml(f.reason)}</td>
             <td>${approvedBadge}</td>
             <td>${updated}</td>
@@ -736,6 +856,7 @@
               </div>
             </td>
           </tr>
+          ${detailHtml}
         `;
       }
 
@@ -780,12 +901,92 @@
         if (error) throw error;
       }
 
+      // ─── Park detail panel (shared) ────────────────────────────────────────────
+
+      async function fetchParkDetail(id) {
+        const { data, error } = await db
+          .from('parks')
+          .select('id, name, latitude, longitude, attributes, created_at, updated_at')
+          .eq('id', id)
+          .single();
+        if (error) throw error;
+        return data;
+      }
+
+      function renderParkDetail(park) {
+        const attrs = park.attributes ?? {};
+        const lat = typeof park.latitude === 'number' ? park.latitude.toFixed(5) : '—';
+        const lng = typeof park.longitude === 'number' ? park.longitude.toFixed(5) : '—';
+        const mapsUrl = (typeof park.latitude === 'number' && typeof park.longitude === 'number')
+          ? `https://www.google.com/maps?q=${park.latitude},${park.longitude}`
+          : null;
+        const coordsHtml = mapsUrl
+          ? `${lat}, ${lng} <a class="parking-map-link" href="${mapsUrl}" target="_blank" rel="noopener">↗ map</a>`
+          : `${lat}, ${lng}`;
+
+        const props = [
+          { label: 'Type', value: PARK_TYPE_LABELS[attrs.parkType] ?? null },
+          { label: 'Surface', value: SURFACE_LABELS[attrs.surfaceType] ?? attrs.surfaceType ?? null },
+          { label: 'Sun', value: SUN_LABELS[attrs.sunExposure] ?? attrs.sunExposure ?? null },
+          { label: 'Drainage', value: DRAINAGE_LABELS[attrs.drainageQuality] ?? attrs.drainageQuality ?? null },
+        ].filter(p => p.value);
+        const propsHtml = props.length > 0
+          ? props.map(p => `<span class="detail-prop"><span class="detail-prop-label">${p.label}</span> ${escHtml(p.value)}</span>`).join('')
+          : '<span class="detail-dim">No attributes</span>';
+
+        const features = (attrs.features ?? []).map(f => FEATURE_LABELS[f] ?? f);
+        const featuresHtml = features.length > 0
+          ? features.map(f => `<span class="detail-tag">${escHtml(f)}</span>`).join('')
+          : '<span class="detail-dim">None</span>';
+
+        const warnings = (attrs.warnings ?? []).map(w => WARNING_LABELS[w] ?? w);
+        const warningsHtml = warnings.length > 0
+          ? warnings.map(w => `<span class="detail-tag detail-tag-warn">${escHtml(w)}</span>`).join('')
+          : '<span class="detail-dim">None</span>';
+
+        const pl = attrs.parkingLocation;
+        let parkingHtml = '<span class="detail-dim">None</span>';
+        if (pl) {
+          const plat = typeof pl.latitude === 'number' ? pl.latitude.toFixed(5) : '—';
+          const plng = typeof pl.longitude === 'number' ? pl.longitude.toFixed(5) : '—';
+          const parts = [`${plat}, ${plng}`];
+          if (pl.address) parts.push(escHtml(pl.address));
+          if (pl.notes) parts.push(`<em>${escHtml(pl.notes)}</em>`);
+          parkingHtml = parts.join(' · ');
+        }
+
+        return `
+          <div class="park-detail">
+            <div class="detail-row">
+              <span class="detail-label">Coords</span>
+              <span>${coordsHtml}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Attributes</span>
+              <span class="detail-tags">${propsHtml}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Features</span>
+              <span class="detail-tags">${featuresHtml}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Warnings</span>
+              <span class="detail-tags">${warningsHtml}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Parking</span>
+              <span>${parkingHtml}</span>
+            </div>
+          </div>
+        `;
+      }
+
       // ─── Recently updated ─────────────────────────────────────────────────────
 
       async function loadRecentlyUpdated() {
         const { data, error } = await db
           .from('parks')
-          .select('id, name, attributes, updated_at, created_at')
+          .select('id, name, latitude, longitude, attributes, updated_at, created_at')
           .order('updated_at', { ascending: false })
           .limit(20);
         if (error) throw error;
@@ -803,13 +1004,18 @@
 
           const tags = [];
           if (attrs.parkType) tags.push({ label: PARK_TYPE_LABELS[attrs.parkType] ?? attrs.parkType, cls: '' });
+          if (attrs.surfaceType) tags.push({ label: SURFACE_LABELS[attrs.surfaceType] ?? attrs.surfaceType, cls: '' });
+          if (attrs.sunExposure) tags.push({ label: SUN_LABELS[attrs.sunExposure] ?? attrs.sunExposure, cls: '' });
+          if (attrs.drainageQuality) tags.push({ label: DRAINAGE_LABELS[attrs.drainageQuality] ?? attrs.drainageQuality, cls: '' });
+          if ((attrs.features ?? []).length > 0) tags.push({ label: `${attrs.features.length} features`, cls: '' });
+          if ((attrs.warnings ?? []).length > 0) tags.push({ label: `${attrs.warnings.length} warnings`, cls: 'warn' });
           if (attrs.parkingLocation) tags.push({ label: 'Parking', cls: 'parking' });
           const tagHtml = tags.map(t =>
             `<span class="recent-tag ${t.cls}">${escHtml(t.label)}</span>`
           ).join('');
 
           return `
-            <div class="recent-card">
+            <div class="recent-card" data-action="toggle-detail" data-park-id="${p.id}">
               <div>
                 <div class="recent-name">${escHtml(p.name)}</div>
                 <div class="recent-meta">
@@ -818,6 +1024,9 @@
                 </div>
               </div>
               <div class="recent-time">${relTime}</div>
+            </div>
+            <div class="detail-panel" id="detail-recent-${p.id}" style="display:none">
+              ${renderParkDetail(p)}
             </div>
           `;
         }).join('');
@@ -890,7 +1099,7 @@
       async function loadDuplicateCandidates() {
         const { data, error } = await db
           .from('parks')
-          .select('id, name, latitude, longitude')
+          .select('id, name, latitude, longitude, attributes')
           .eq('duplicate_reviewed', false);
         if (error) throw error;
         const pairs = [];
@@ -1074,10 +1283,18 @@
               <div class="dup-park">
                 <div class="dup-park-name">${escHtml(a.name)}</div>
                 <div class="dup-park-coords">${a.latitude.toFixed(5)}, ${a.longitude.toFixed(5)}</div>
+                <button class="btn-detail" data-action="toggle-detail" data-park-id="dup-a-${a.id}-${b.id}">Details</button>
+                <div class="detail-panel" id="detail-dup-a-${a.id}-${b.id}" style="display:none">
+                  ${renderParkDetail(a)}
+                </div>
               </div>
               <div class="dup-park">
                 <div class="dup-park-name">${escHtml(b.name)}</div>
                 <div class="dup-park-coords">${b.latitude.toFixed(5)}, ${b.longitude.toFixed(5)}</div>
+                <button class="btn-detail" data-action="toggle-detail" data-park-id="dup-b-${a.id}-${b.id}">Details</button>
+                <div class="detail-panel" id="detail-dup-b-${a.id}-${b.id}" style="display:none">
+                  ${renderParkDetail(b)}
+                </div>
               </div>
             </div>
             <div class="dup-footer">
@@ -1192,7 +1409,9 @@
           const lng = p.longitude.toFixed(5);
           return `
             <tr id="name-row-${p.id}">
-              <td>${escHtml(p.name)}<span class="flag-badge">profanity</span></td>
+              <td>${escHtml(p.name)}<span class="flag-badge">profanity</span>
+                <button class="btn-detail" data-action="load-detail" data-park-id="${p.id}">View</button>
+              </td>
               <td>${lat}</td>
               <td>${lng}</td>
               <td>
@@ -1202,6 +1421,13 @@
                   <button class="btn-edit" data-action="edit-park"
                     data-id="${p.id}" data-name="${escAttr(p.name)}"
                     data-lat="${p.latitude}" data-lng="${p.longitude}">Edit</button>
+                </div>
+              </td>
+            </tr>
+            <tr id="detail-row-park-${p.id}" class="detail-row" style="display:none">
+              <td colspan="4" style="padding:0;border:none">
+                <div class="detail-panel" id="detail-park-${p.id}" style="display:block">
+                  <span class="detail-dim">Loading…</span>
                 </div>
               </td>
             </tr>
@@ -1259,9 +1485,16 @@
         const badge = flagged ? '<span class="flag-badge">profanity</span>' : '';
         const lat = typeof p.latitude === 'number' ? p.latitude.toFixed(5) : p.latitude;
         const lng = typeof p.longitude === 'number' ? p.longitude.toFixed(5) : p.longitude;
+        const hasAttrs = p.attributes != null;
+        const viewBtn = hasAttrs
+          ? `<button class="btn-detail" data-action="toggle-detail" data-park-id="park-${id}">View</button>`
+          : `<button class="btn-detail" data-action="load-detail" data-park-id="${id}">View</button>`;
+        const detailHtml = hasAttrs
+          ? `<tr id="detail-row-park-${id}" class="detail-row" style="display:none"><td colspan="4" style="padding:0;border:none"><div class="detail-panel" id="detail-park-${id}" style="display:block">${renderParkDetail(p)}</div></td></tr>`
+          : `<tr id="detail-row-park-${id}" class="detail-row" style="display:none"><td colspan="4" style="padding:0;border:none"><div class="detail-panel" id="detail-park-${id}" style="display:block"><span class="detail-dim">Loading…</span></div></td></tr>`;
         return `
           <tr id="park-row-${id}">
-            <td>${escHtml(p.name)}${badge}</td>
+            <td>${escHtml(p.name)}${badge} ${viewBtn}</td>
             <td>${lat}</td>
             <td>${lng}</td>
             <td>
@@ -1272,6 +1505,7 @@
               </div>
             </td>
           </tr>
+          ${detailHtml}
         `;
       }
 
@@ -1391,6 +1625,50 @@
 
         if (action === 'collapse-all') {
           document.querySelectorAll('#main details[open]').forEach(d => { d.open = false; });
+          return;
+        }
+
+        if (action === 'toggle-detail') {
+          const parkId = btn.dataset.parkId;
+          // For table rows, the detail row wraps the panel
+          const detailRow = document.getElementById(`detail-row-${parkId}`);
+          // For recently-updated cards / dup cards, the detail panel is a standalone div
+          const panel = document.getElementById(`detail-${parkId}`)
+            ?? document.getElementById(`detail-recent-${parkId}`);
+          if (detailRow) {
+            const visible = detailRow.style.display !== 'none';
+            detailRow.style.display = visible ? 'none' : '';
+            const origLabel = btn.dataset.label ?? btn.textContent;
+            if (!btn.dataset.label) btn.dataset.label = origLabel;
+            btn.textContent = visible ? origLabel : 'Hide';
+          } else if (panel) {
+            const visible = panel.style.display !== 'none';
+            panel.style.display = visible ? 'none' : 'block';
+          }
+          return;
+        }
+
+        if (action === 'load-detail') {
+          const parkId = btn.dataset.parkId;
+          const detailRow = document.getElementById(`detail-row-park-${parkId}`);
+          if (detailRow && detailRow.style.display !== 'none') {
+            detailRow.style.display = 'none';
+            btn.textContent = 'View';
+            return;
+          }
+          btn.disabled = true;
+          try {
+            const park = await fetchParkDetail(parkId);
+            const panelEl = document.getElementById(`detail-park-${parkId}`);
+            if (panelEl) panelEl.innerHTML = renderParkDetail(park);
+            if (detailRow) detailRow.style.display = '';
+            btn.textContent = 'Hide';
+            btn.dataset.action = 'toggle-detail';
+            btn.dataset.parkId = `park-${parkId}`;
+          } catch (err) {
+            alert(err.message);
+          }
+          btn.disabled = false;
           return;
         }
 
