@@ -651,10 +651,12 @@
 
       // ─── Park flags ──────────────────────────────────────────────────────
 
+      const flagRowData = new Map();
+
       async function loadParkFlags() {
         const { data, error } = await db
           .from('park_flags')
-          .select('id, park_id, reason, created_at, updated_at, parks(name)')
+          .select('id, park_id, reason, approved, created_at, updated_at, parks(name)')
           .order('updated_at', { ascending: false })
           .limit(100);
         if (error) throw error;
@@ -669,28 +671,83 @@
         if (error) throw error;
       }
 
-      function renderFlags(flags) {
-        if (flags.length === 0) return '<p class="empty">No park flags.</p>';
-        const rows = flags.map(f => {
-          const parkName = f.parks?.name ?? 'Unknown park';
-          const updated = timeAgo(new Date(f.updated_at));
+      async function approveFlag(id, approved) {
+        const { error } = await db
+          .from('park_flags')
+          .update({ approved })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      async function updateFlagReason(id, reason) {
+        const trimmed = reason.trim();
+        if (trimmed.length < 5 || trimmed.length > 200)
+          throw new Error('Reason must be between 5 and 200 characters');
+        const { error } = await db
+          .from('park_flags')
+          .update({ reason: trimmed })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      function renderFlagRow(f, editing = false) {
+        const parkName = f.parks?.name ?? 'Unknown park';
+        const updated = timeAgo(new Date(f.updated_at));
+        const approvedBadge = f.approved
+          ? '<span class="flag-badge" style="background:rgba(34,197,94,0.15);color:var(--green)">approved</span>'
+          : '<span class="flag-badge" style="background:rgba(245,158,11,0.15);color:var(--amber)">pending</span>';
+
+        if (editing) {
           return `
-            <tr id="flag-row-${f.id}">
-              <td>${escHtml(parkName)}</td>
-              <td>${escHtml(f.reason)}</td>
-              <td>${updated}</td>
-              <td>
-                <div class="park-actions">
-                  <button class="btn-delete" data-action="dismiss-flag" data-id="${f.id}">Dismiss</button>
+            <tr id="flag-row-${f.id}" class="editing-row">
+              <td colspan="5" style="padding:16px">
+                <div style="font-size:13px;font-weight:600;color:var(--dim);margin-bottom:12px">
+                  ${escHtml(parkName)}
                 </div>
+                <div class="field" style="margin-bottom:12px">
+                  <label>Reason <span style="color:var(--dim);font-weight:400">(5–200 chars)</span></label>
+                  <textarea id="edit-flag-reason-${f.id}" rows="3" maxlength="200"
+                    style="width:100%;resize:vertical;background:var(--s1);color:var(--text);border:1px solid var(--b2);border-radius:6px;padding:8px;font-family:var(--sans);font-size:13px"
+                  >${escHtml(f.reason)}</textarea>
+                </div>
+                <div class="park-actions">
+                  <button class="btn-save" data-action="save-flag" data-id="${f.id}">Save</button>
+                  <button class="btn-cancel" data-action="cancel-flag" data-id="${f.id}">Cancel</button>
+                </div>
+                <div id="flag-error-${f.id}" class="error"></div>
               </td>
             </tr>
           `;
-        }).join('');
+        }
+
+        return `
+          <tr id="flag-row-${f.id}">
+            <td>${escHtml(parkName)}</td>
+            <td>${escHtml(f.reason)}</td>
+            <td>${approvedBadge}</td>
+            <td>${updated}</td>
+            <td>
+              <div class="park-actions">
+                ${f.approved
+                  ? `<button class="btn-cancel" data-action="unapprove-flag" data-id="${f.id}">Unapprove</button>`
+                  : `<button class="btn-approve" data-action="approve-flag" data-id="${f.id}">Approve</button>`}
+                <button class="btn-edit" data-action="edit-flag" data-id="${f.id}">Edit</button>
+                <button class="btn-delete" data-action="dismiss-flag" data-id="${f.id}">Dismiss</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }
+
+      function renderFlags(flags) {
+        if (flags.length === 0) return '<p class="empty">No park flags.</p>';
+        flagRowData.clear();
+        for (const f of flags) flagRowData.set(f.id, f);
+        const rows = flags.map(f => renderFlagRow(f)).join('');
         return `
           <div class="table-scroll">
             <table>
-              <thead><tr><th>Park</th><th>Reason</th><th>Updated</th><th></th></tr></thead>
+              <thead><tr><th>Park</th><th>Reason</th><th>Status</th><th>Updated</th><th></th></tr></thead>
               <tbody id="flags-body">${rows}</tbody>
             </table>
           </div>
@@ -1370,12 +1427,69 @@
           btn.disabled = true;
           try {
             await dismissFlag(btn.dataset.id);
+            flagRowData.delete(btn.dataset.id);
             document.getElementById(`flag-row-${btn.dataset.id}`)?.remove();
             if (!document.querySelector('#flags-body tr')) {
               document.getElementById('flags-content').innerHTML =
                 '<p class="empty">No park flags.</p>';
             }
           } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'approve-flag' || action === 'unapprove-flag') {
+          const id = btn.dataset.id;
+          const flag = flagRowData.get(id);
+          if (!flag) return;
+          const newApproved = action === 'approve-flag';
+          btn.disabled = true;
+          try {
+            await approveFlag(id, newApproved);
+            flag.approved = newApproved;
+            const row = document.getElementById(`flag-row-${id}`);
+            if (row) row.outerHTML = renderFlagRow(flag);
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'edit-flag') {
+          const id = btn.dataset.id;
+          const flag = flagRowData.get(id);
+          if (!flag) return;
+          const row = document.getElementById(`flag-row-${id}`);
+          if (row) {
+            row.outerHTML = renderFlagRow(flag, true);
+            document.getElementById(`edit-flag-reason-${id}`)?.focus();
+          }
+          return;
+        }
+
+        if (action === 'save-flag') {
+          const id = btn.dataset.id;
+          const flag = flagRowData.get(id);
+          if (!flag) return;
+          const reason = document.getElementById(`edit-flag-reason-${id}`)?.value ?? '';
+          const errEl = document.getElementById(`flag-error-${id}`);
+          btn.disabled = true;
+          if (errEl) errEl.textContent = '';
+          try {
+            await updateFlagReason(id, reason);
+            flag.reason = reason.trim();
+            const row = document.getElementById(`flag-row-${id}`);
+            if (row) row.outerHTML = renderFlagRow(flag);
+          } catch (err) {
+            if (errEl) errEl.textContent = err.message;
+            btn.disabled = false;
+          }
+          return;
+        }
+
+        if (action === 'cancel-flag') {
+          const id = btn.dataset.id;
+          const flag = flagRowData.get(id);
+          if (!flag) return;
+          const row = document.getElementById(`flag-row-${id}`);
+          if (row) row.outerHTML = renderFlagRow(flag);
           return;
         }
 
