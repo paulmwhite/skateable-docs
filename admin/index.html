@@ -768,7 +768,7 @@
       async function loadParkFlags() {
         const { data, error } = await db
           .from('park_flags')
-          .select('id, park_id, reason, approved, created_at, updated_at, parks(id, name, latitude, longitude, attributes)')
+          .select('id, park_id, category, reason, approved, created_at, updated_at, parks(id, name, latitude, longitude, attributes)')
           .order('updated_at', { ascending: false })
           .limit(100);
         if (error) throw error;
@@ -791,19 +791,53 @@
         if (error) throw error;
       }
 
-      async function updateFlagReason(id, reason) {
+      async function updateFlagReason(id, reason, category) {
         const trimmed = reason.trim();
         if (trimmed.length < 5 || trimmed.length > 200)
           throw new Error('Reason must be between 5 and 200 characters');
+        const update = { reason: trimmed };
+        if (category !== undefined) update.category = category || null;
         const { error } = await db
           .from('park_flags')
-          .update({ reason: trimmed })
+          .update(update)
           .eq('id', id);
         if (error) throw error;
       }
 
-      function isParkingFlag(reason) {
-        return reason.startsWith('[Parking');
+      const CATEGORY_LABELS = {
+        wrong_location: 'Wrong Location',
+        permanently_closed: 'Permanently Closed',
+        dangerous_conditions: 'Dangerous Conditions',
+        duplicate_listing: 'Duplicate Listing',
+        inappropriate_content: 'Inappropriate Content',
+        other: 'Other',
+      };
+
+      const CATEGORY_COLORS = {
+        wrong_location: { bg: 'rgba(59,130,246,0.12)', fg: 'var(--blue)' },
+        permanently_closed: { bg: 'rgba(185,28,28,0.12)', fg: 'var(--red)' },
+        dangerous_conditions: { bg: 'rgba(245,158,11,0.15)', fg: 'var(--amber)' },
+        duplicate_listing: { bg: 'rgba(160,160,160,0.15)', fg: 'var(--dim)' },
+        inappropriate_content: { bg: 'rgba(185,28,28,0.12)', fg: 'var(--red)' },
+        other: { bg: 'rgba(160,160,160,0.15)', fg: 'var(--dim)' },
+      };
+
+      function isParkingFlag(f) {
+        return f.category === 'wrong_location' || (f.category == null && f.reason.startsWith('[Parking'));
+      }
+
+      function categoryBadge(category) {
+        if (!category) return '';
+        const label = CATEGORY_LABELS[category] ?? category;
+        const color = CATEGORY_COLORS[category] ?? { bg: 'rgba(160,160,160,0.15)', fg: 'var(--dim)' };
+        return ` <span class="flag-badge" style="background:${color.bg};color:${color.fg}">${escHtml(label)}</span>`;
+      }
+
+      function categorySelectHtml(selected) {
+        const opts = Object.entries(CATEGORY_LABELS)
+          .map(([v, l]) => `<option value="${v}"${v === selected ? ' selected' : ''}>${escHtml(l)}</option>`)
+          .join('');
+        return `<select id="edit-flag-category-${Date.now()}" class="flag-category-select" style="background:var(--s1);color:var(--text);border:1px solid var(--b2);border-radius:6px;padding:6px 8px;font-family:var(--sans);font-size:13px;width:100%"><option value="">-- No category --</option>${opts}</select>`;
       }
 
       function parseParkingSuggestion(reason) {
@@ -819,20 +853,31 @@
       function renderFlagRow(f, editing = false) {
         const parkName = f.parks?.name ?? 'Unknown park';
         const updated = timeAgo(new Date(f.updated_at));
-        const isParking = isParkingFlag(f.reason);
+        const isParking = isParkingFlag(f);
         const approvedBadge = f.approved
           ? '<span class="flag-badge" style="background:rgba(34,197,94,0.15);color:var(--green)">approved</span>'
           : '<span class="flag-badge" style="background:rgba(245,158,11,0.15);color:var(--amber)">pending</span>';
-        const typeBadge = isParking
+        const catBadge = categoryBadge(f.category);
+        const parkingBadge = isParking && !f.category
           ? ' <span class="flag-badge" style="background:rgba(59,130,246,0.12);color:var(--blue)">parking</span>'
           : '';
 
         if (editing) {
           return `
             <tr id="flag-row-${f.id}" class="editing-row">
-              <td colspan="5" style="padding:16px">
+              <td colspan="6" style="padding:16px">
                 <div style="font-size:13px;font-weight:600;color:var(--dim);margin-bottom:12px">
                   ${escHtml(parkName)}
+                </div>
+                <div class="field" style="margin-bottom:12px">
+                  <label>Category</label>
+                  <select id="edit-flag-category-${f.id}"
+                    style="background:var(--s1);color:var(--text);border:1px solid var(--b2);border-radius:6px;padding:6px 8px;font-family:var(--sans);font-size:13px;width:100%">
+                    <option value="">-- No category --</option>
+                    ${Object.entries(CATEGORY_LABELS).map(([v, l]) =>
+                      `<option value="${v}"${v === f.category ? ' selected' : ''}>${escHtml(l)}</option>`
+                    ).join('')}
+                  </select>
                 </div>
                 <div class="field" style="margin-bottom:12px">
                   <label>Reason <span style="color:var(--dim);font-weight:400">(5–200 chars)</span></label>
@@ -857,7 +902,7 @@
           ? `<button class="btn-detail" data-action="toggle-detail" data-park-id="flag-${f.id}">View park</button>`
           : '';
         const detailHtml = hasPark
-          ? `<tr id="detail-row-flag-${f.id}" class="detail-row" style="display:none"><td colspan="5" style="padding:0;border:none"><div class="detail-panel" id="detail-flag-${f.id}" style="display:block">${renderParkDetail(f.parks)}</div></td></tr>`
+          ? `<tr id="detail-row-flag-${f.id}" class="detail-row" style="display:none"><td colspan="6" style="padding:0;border:none"><div class="detail-panel" id="detail-flag-${f.id}" style="display:block">${renderParkDetail(f.parks)}</div></td></tr>`
           : '';
 
         const removeParkingBtn = isParking && hasParking
@@ -878,7 +923,8 @@
 
         return `
           <tr id="flag-row-${f.id}">
-            <td>${escHtml(parkName)}${typeBadge} ${viewBtn}</td>
+            <td>${escHtml(parkName)}${parkingBadge} ${viewBtn}</td>
+            <td>${catBadge || '<span style="color:var(--dim)">—</span>'}</td>
             <td>${reasonHtml}</td>
             <td>${approvedBadge}</td>
             <td>${updated}</td>
@@ -906,7 +952,7 @@
         return `
           <div class="table-scroll">
             <table>
-              <thead><tr><th>Park</th><th>Reason</th><th>Status</th><th>Updated</th><th></th></tr></thead>
+              <thead><tr><th>Park</th><th>Category</th><th>Reason</th><th>Status</th><th>Updated</th><th></th></tr></thead>
               <tbody id="flags-body">${rows}</tbody>
             </table>
           </div>
@@ -1083,6 +1129,60 @@
         return date.toLocaleDateString();
       }
 
+      // ─── Recent sessions ──────────────────────────────────────────────────────
+
+      const CONDITION_LABELS = {
+        snow: 'Snow', ice: 'Ice', wind: 'Windy', sleet: 'Sleet',
+        obstruction: 'Obstruction', pebbles: 'Pebbles', dirt: 'Dirt',
+        scooter_takeover: 'Scooter Takeover', busy: 'Busy',
+        moderate: 'Moderate', quiet: 'Quiet',
+        unsupervised_children: 'Unsupervised Kids',
+      };
+
+      async function loadRecentSessions() {
+        const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+        const { data, error } = await db
+          .from('sessions')
+          .select('id, park_id, user_id, surface_dry, notes, is_observation, conditions, logged_at, parks(name)')
+          .gte('logged_at', since)
+          .order('logged_at', { ascending: false })
+          .limit(50);
+        if (error) throw error;
+        return data ?? [];
+      }
+
+      function renderSessions(sessions) {
+        if (sessions.length === 0) return '<p class="empty">No sessions in the last 48 hours.</p>';
+        const rows = sessions.map(s => {
+          const parkName = s.parks?.name ?? '—';
+          const status = s.surface_dry ? 'DRY' : 'WET';
+          const statusCls = s.surface_dry ? 'color:var(--accent)' : 'color:var(--red)';
+          const type = s.is_observation ? '<span class="recent-tag">observation</span>' : '';
+          const condTags = (s.conditions ?? []).map(c =>
+            `<span class="recent-tag">${escHtml(CONDITION_LABELS[c] ?? c)}</span>`
+          ).join('');
+          const notes = s.notes ? escHtml(s.notes) : '<span style="color:var(--muted)">—</span>';
+          const loggedAt = timeAgo(new Date(s.logged_at));
+          return `
+            <tr>
+              <td>${escHtml(parkName)}</td>
+              <td><strong style="${statusCls}">${status}</strong> ${type}</td>
+              <td>${condTags || '<span style="color:var(--muted)">—</span>'}</td>
+              <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${notes}</td>
+              <td style="color:var(--dim)">${loggedAt}</td>
+            </tr>
+          `;
+        }).join('');
+        return `
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Park</th><th>Status</th><th>Conditions</th><th>Notes</th><th>When</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
       // ─── Parking locations ────────────────────────────────────────────────────
 
       async function loadParkingLocations() {
@@ -1225,11 +1325,21 @@
                 <span class="summary-count loading">—</span>
                 park flags
               </div>
+              <div class="summary-chip" id="summary-sessions" data-target-section="details-sessions">
+                <span class="summary-count loading">—</span>
+                recent sessions
+              </div>
             </div>
             <section>
               <details>
                 <summary><h2>Recently updated parks <span class="section-caret">▶</span></h2></summary>
                 <div id="recent-content" class="loading">Loading…</div>
+              </details>
+            </section>
+            <section>
+              <details id="details-sessions">
+                <summary><h2>Recent sessions<span class="section-badge" id="badge-sessions"></span> <span class="section-caret">▶</span></h2></summary>
+                <div id="sessions-content" class="loading">Loading…</div>
               </details>
             </section>
             <section>
@@ -1552,12 +1662,25 @@
       async function loadContent() {
         await Promise.all([
           loadRecentSection(),
+          loadSessionsSection(),
           loadPhotosSection(),
           loadDuplicatesSection(),
           loadParkingSection(),
           loadFlagsSection(),
           loadParksAndNamesSection(),
         ]);
+      }
+
+      async function loadSessionsSection() {
+        const el = document.getElementById('sessions-content');
+        if (!el) return;
+        try {
+          const sessions = await loadRecentSessions();
+          el.innerHTML = renderSessions(sessions);
+          updateSummaryChip('summary-sessions', sessions.length);
+        } catch (err) {
+          el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
+        }
       }
 
       async function loadRecentSection() {
@@ -1785,12 +1908,15 @@
           const flag = flagRowData.get(id);
           if (!flag) return;
           const reason = document.getElementById(`edit-flag-reason-${id}`)?.value ?? '';
+          const categoryEl = document.getElementById(`edit-flag-category-${id}`);
+          const category = categoryEl?.value ?? '';
           const errEl = document.getElementById(`flag-error-${id}`);
           btn.disabled = true;
           if (errEl) errEl.textContent = '';
           try {
-            await updateFlagReason(id, reason);
+            await updateFlagReason(id, reason, category);
             flag.reason = reason.trim();
+            flag.category = category || null;
             const row = document.getElementById(`flag-row-${id}`);
             if (row) row.outerHTML = renderFlagRow(flag);
           } catch (err) {
