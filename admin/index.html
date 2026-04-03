@@ -305,6 +305,54 @@
         return data.filter(p => leoProfanity.check(p.name));
       }
 
+      // ─── Park flags ──────────────────────────────────────────────────────
+
+      async function loadParkFlags() {
+        const { data, error } = await db
+          .from('park_flags')
+          .select('id, park_id, reason, created_at, updated_at, parks(name)')
+          .order('updated_at', { ascending: false })
+          .limit(100);
+        if (error) throw error;
+        return data ?? [];
+      }
+
+      async function dismissFlag(id) {
+        const { error } = await db
+          .from('park_flags')
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      function renderFlags(flags) {
+        if (flags.length === 0) return '<p class="empty">No park flags.</p>';
+        const rows = flags.map(f => {
+          const parkName = f.parks?.name ?? 'Unknown park';
+          const updated = timeAgo(new Date(f.updated_at));
+          return `
+            <tr id="flag-row-${f.id}">
+              <td>${escHtml(parkName)}</td>
+              <td>${escHtml(f.reason)}</td>
+              <td>${updated}</td>
+              <td>
+                <div class="park-actions">
+                  <button class="btn-delete" data-action="dismiss-flag" data-id="${f.id}">Dismiss</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+        return `
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Park</th><th>Reason</th><th>Updated</th><th></th></tr></thead>
+              <tbody id="flags-body">${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
       async function markNameReviewed(id) {
         const { error } = await db
           .from('parks')
@@ -522,6 +570,10 @@
                 <span class="summary-count loading">—</span>
                 flagged names
               </div>
+              <div class="summary-chip" id="summary-flags">
+                <span class="summary-count loading">—</span>
+                park flags
+              </div>
             </div>
             <section>
               <details>
@@ -545,6 +597,12 @@
               <details>
                 <summary><h2>Parking locations <span class="section-caret">▶</span></h2></summary>
                 <div id="parking-content" class="loading">Loading…</div>
+              </details>
+            </section>
+            <section>
+              <details>
+                <summary><h2>Park flags <span class="section-caret">▶</span></h2></summary>
+                <div id="flags-content" class="loading">Loading…</div>
               </details>
             </section>
             <section>
@@ -821,6 +879,7 @@
           loadPhotosSection(),
           loadDuplicatesSection(),
           loadParkingSection(),
+          loadFlagsSection(),
           loadParksAndNamesSection(),
         ]);
       }
@@ -868,6 +927,18 @@
           parkingRowData.clear();
           for (const p of parks) parkingRowData.set(p.id, p);
           el.innerHTML = renderParkingSection(parks);
+        } catch (err) {
+          el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
+        }
+      }
+
+      async function loadFlagsSection() {
+        const el = document.getElementById('flags-content');
+        if (!el) return;
+        try {
+          const flags = await loadParkFlags();
+          el.innerHTML = renderFlags(flags);
+          updateSummaryChip('summary-flags', flags.length);
         } catch (err) {
           el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
         }
@@ -926,6 +997,20 @@
           try {
             await markNameReviewed(btn.dataset.id);
             document.getElementById(`name-row-${btn.dataset.id}`)?.remove();
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'dismiss-flag') {
+          if (!confirm('Dismiss this flag?')) return;
+          btn.disabled = true;
+          try {
+            await dismissFlag(btn.dataset.id);
+            document.getElementById(`flag-row-${btn.dataset.id}`)?.remove();
+            if (!document.querySelector('#flags-body tr')) {
+              document.getElementById('flags-content').innerHTML =
+                '<p class="empty">No park flags.</p>';
+            }
           } catch (err) { alert(err.message); btn.disabled = false; }
           return;
         }
