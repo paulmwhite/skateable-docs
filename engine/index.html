@@ -1,0 +1,1225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <title>Skateboarding Dryness Engine - Skateable</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, sans-serif;
+        background: #0f0f0f;
+        color: #f0f0f0;
+        min-height: 100vh;
+        line-height: 1.6;
+      }
+      header {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 48px 24px 40px;
+      }
+      header a { text-decoration: none; }
+      h1 {
+        font-size: 32px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin-top: 20px;
+        margin-bottom: 6px;
+      }
+      .subtitle {
+        font-size: 15px;
+        color: #666;
+        margin-bottom: 8px;
+      }
+      main {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 0 24px 80px;
+      }
+
+      /* Hero banner */
+      .hero {
+        background: linear-gradient(135deg, #0d2e18 0%, #0d1f3c 100%);
+        border: 1px solid #1a4d2a;
+        border-radius: 12px;
+        padding: 32px;
+        margin-bottom: 48px;
+        text-align: center;
+      }
+      .hero-badge {
+        display: inline-block;
+        background: #0d2e18;
+        color: #4ade80;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 3px 8px;
+        border-radius: 4px;
+        border: 1px solid #1a4d2a;
+        margin-bottom: 16px;
+      }
+      .hero h2 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #f0f0f0;
+        margin-bottom: 12px;
+      }
+      .hero p {
+        font-size: 15px;
+        color: #888;
+        max-width: 520px;
+        margin: 0 auto;
+      }
+
+      /* Section styles */
+      .section {
+        border-top: 1px solid #1e1e1e;
+        padding: 40px 0;
+      }
+      .section-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #4ade80;
+        margin-bottom: 12px;
+      }
+      h2 {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        letter-spacing: -0.3px;
+      }
+      h3 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-top: 28px;
+        margin-bottom: 10px;
+        color: #ddd;
+      }
+      p, li {
+        font-size: 15px;
+        color: #999;
+        margin-bottom: 12px;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+      ul li {
+        padding-left: 16px;
+        position: relative;
+      }
+      ul li::before {
+        content: "·";
+        position: absolute;
+        left: 4px;
+        color: #4ade80;
+        font-weight: 700;
+      }
+
+      /* Version badges */
+      .version-badge {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 2px 7px;
+        border-radius: 4px;
+        margin-left: 10px;
+        vertical-align: middle;
+      }
+      .badge-legacy {
+        background: #1e1e1e;
+        color: #888;
+        border: 1px solid #333;
+      }
+      .badge-current {
+        background: #0d2e18;
+        color: #4ade80;
+        border: 1px solid #1a4d2a;
+      }
+
+      /* Diagram cards */
+      .diagram {
+        background: #1a1a1a;
+        border-radius: 12px;
+        padding: 28px;
+        margin: 24px 0;
+        font-family: 'SF Mono', 'Menlo', monospace;
+        font-size: 13px;
+        color: #aaa;
+        line-height: 1.7;
+        overflow-x: auto;
+        white-space: pre;
+      }
+      .diagram .highlight { color: #4ade80; }
+      .diagram .dim { color: #555; }
+      .diagram .accent { color: #60a5fa; }
+      .diagram .warn { color: #facc15; }
+
+      /* Comparison table */
+      .comparison {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 24px 0;
+        font-size: 14px;
+      }
+      .comparison th {
+        text-align: left;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #666;
+        padding: 10px 12px;
+        border-bottom: 1px solid #2a2a2a;
+      }
+      .comparison td {
+        padding: 10px 12px;
+        color: #999;
+        border-bottom: 1px solid #1e1e1e;
+      }
+      .comparison tr:last-child td { border-bottom: none; }
+      .comparison .check { color: #4ade80; }
+      .comparison .cross { color: #555; }
+
+      /* Material table */
+      .material-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        font-size: 14px;
+      }
+      .material-table th {
+        text-align: left;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #666;
+        padding: 8px 12px;
+        border-bottom: 1px solid #2a2a2a;
+      }
+      .material-table td {
+        padding: 8px 12px;
+        color: #999;
+        border-bottom: 1px solid #1e1e1e;
+      }
+
+      /* Formula blocks */
+      .formula {
+        background: #1a1a1a;
+        border-left: 3px solid #3B82F6;
+        border-radius: 0 8px 8px 0;
+        padding: 16px 20px;
+        margin: 16px 0;
+        font-family: 'SF Mono', 'Menlo', monospace;
+        font-size: 14px;
+        color: #ccc;
+      }
+      .formula .label {
+        font-family: -apple-system, sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #3B82F6;
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      /* Reference cards */
+      .reference {
+        background: #1a1a1a;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin: 12px 0;
+      }
+      .reference .author {
+        font-size: 14px;
+        font-weight: 600;
+        color: #ddd;
+        margin-bottom: 2px;
+      }
+      .reference .title {
+        font-size: 14px;
+        font-style: italic;
+        color: #888;
+        margin-bottom: 6px;
+      }
+      .reference .why {
+        font-size: 13px;
+        color: #666;
+      }
+
+      /* Callout */
+      .callout {
+        background: #0d1f3c;
+        border: 1px solid #1a3460;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 24px 0;
+      }
+      .callout p {
+        color: #8bb8f0;
+        margin: 0;
+      }
+
+      footer {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 4px 0;
+        padding: 24px;
+        color: #444;
+        font-size: 13px;
+      }
+      footer a {
+        color: #555;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      footer a + a::before {
+        content: "·";
+        color: #444;
+        padding: 0 6px;
+      }
+      @media (max-width: 420px) {
+        footer { font-size: 11px; }
+        footer a + a::before { padding: 0 5px; }
+        .diagram { font-size: 11px; padding: 16px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="/"><img src="/icon.png" alt="Skateable" style="width:52px;height:52px;border-radius:12px;display:block;" /></a>
+      <h1>Skateboarding Dryness Engine</h1>
+      <p class="subtitle">How Skateable predicts whether a spot is dry enough to skate</p>
+    </header>
+
+    <main>
+      <!-- Hero -->
+      <div class="hero">
+        <span class="hero-badge">Backed by science</span>
+        <h2>Real physics. Not guesswork.</h2>
+        <p>
+          Skateable's scoring engine is built on the same thermodynamic equations
+          used by meteorologists and hydrologists to model evaporation from real
+          surfaces. Combined with Bayesian statistical inference and community
+          ground truth, it delivers a dryness prediction you can trust.
+        </p>
+      </div>
+
+      <!-- ─── Unified formula ──────────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">The complete equation</span>
+        <h2>SDE unified formula</h2>
+        <p>
+          The entire Skateboarding Dryness Engine expressed as a single
+          composed equation. Each term is explained in detail in the
+          sections below.
+        </p>
+        <div class="formula">
+          <span class="label">Skateboarding Dryness Engine (SDE)</span>
+          D<sub>sde</sub> = 100 - [100 - (D<sub>base</sub> + &delta;<sub>s</sub>)(1 - e<sup>-kt</sup>)](2 - G) + P
+
+          D<sub>base</sub> = 100 - H(RH) - T(t) + W(v) + R(R<sub>n</sub>) - F(T<sub>eff</sub>)
+          VPD = e<sub>s</sub>(T)(1 - RH / 100)
+          e<sub>s</sub>(T) = 0.611 exp(17.27T / (T + 237.3))
+          R<sub>n</sub> = (1 - &alpha;) S<sub>rad</sub> sin(&pi;h/L)(1 - C/100) f<sub>sun</sub>
+          k = 0.02(1 + 2 VPD)(1 - 0.3&Phi;) f<sub>night</sub>
+          &delta;<sub>s</sub> = sgn(n) min(&radic;|n| &times; 3, 15)
+
+          where &alpha; = albedo, &Phi; = porosity, G = grip multiplier,
+                P = tolerance offset, &delta;<sub>s</sub> = session report nudge,
+                t = minutes since rain, k = drying constant,
+                F = freeze penalty, h = hour, L = day length
+        </div>
+      </div>
+
+      <!-- ─── Engine versions overview ──────────────────────────── -->
+      <div class="section">
+        <span class="section-label">Overview</span>
+        <h2>Three generations of scoring</h2>
+        <p>
+          The skateability score has evolved through three distinct engine versions,
+          each building on the last. Every version produces a 0 to 100 score
+          representing how dry and skateable a spot is right now.
+        </p>
+
+        <table class="comparison">
+          <thead>
+            <tr>
+              <th>Capability</th>
+              <th>v1.0</th>
+              <th>v1.1</th>
+              <th>SDE</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Weather-based scoring</td>
+              <td class="check">Yes</td>
+              <td class="check">Yes</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Rain decay curve</td>
+              <td class="check">Yes</td>
+              <td class="check">Yes</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Park attributes (surface, sun, drainage)</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Community session adjustment</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Penman-Monteith evaporation physics</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Vapor Pressure Deficit (VPD)</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Material science (albedo, porosity)</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Bayesian data fusion</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Dew point / condensation detection</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Drainage bottleneck / puddle timer</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Grip multiplier per surface</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Score forecast timeline</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Graduated rain scoring</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Session window (approaching rain)</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Latitude-aware solar model</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Microclimate learning</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Wind chill awareness</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Ice / frost / snow detection</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+            <tr>
+              <td>Environment attributes (cover, wind, elevation, trees, water)</td>
+              <td class="cross">No</td>
+              <td class="cross">No</td>
+              <td class="check">Yes</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ─── v1.0 ──────────────────────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">Legacy</span>
+        <h2>Engine v1.0 <span class="version-badge badge-legacy">v1.0</span></h2>
+        <p>
+          The original scoring engine shipped with Skateable 1.0 in March 2025. It
+          used a simple weather-only model: fetch current conditions and 48 hours
+          of precipitation history, then apply penalties and bonuses.
+        </p>
+
+        <h3>How it worked</h3>
+        <p>
+          The score started at 100 and was reduced by precipitation and humidity
+          penalties. A wind bonus partially offset those penalties. The rain decay
+          was a linear ramp: immediately after rain the penalty was 70 points,
+          tapering to zero over 6 hours.
+        </p>
+
+        <div class="diagram"><span class="dim">Score =</span> <span class="highlight">100</span>
+  <span class="dim">-</span> precipitation penalty <span class="dim">(0 to 100)</span>
+  <span class="dim">-</span> humidity penalty     <span class="dim">(0 to 20)</span>
+  <span class="dim">+</span> wind bonus           <span class="dim">(0 to 15)</span></div>
+
+        <h3>Limitations</h3>
+        <ul>
+          <li>No awareness of surface type, sun exposure, or drainage quality.</li>
+          <li>A smooth concrete park and a rough asphalt lot scored identically in the same weather.</li>
+          <li>Community session reports were not used.</li>
+          <li>The linear 6-hour drying curve was the same for all conditions, whether 35 degrees and sunny or 5 degrees and overcast.</li>
+        </ul>
+      </div>
+
+      <!-- ─── v1.1 ──────────────────────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">Legacy</span>
+        <h2>Engine v1.1 <span class="version-badge badge-legacy">v1.1</span></h2>
+        <p>
+          Version 1.1 introduced park attributes and community session data,
+          making the score location-specific for the first time.
+        </p>
+
+        <h3>How it worked</h3>
+        <p>
+          The base model was the same additive approach as v1.0, but with four new
+          modifier terms for surface type, sun exposure, drainage quality, and
+          temperature. Community session reports also contributed: each recent dry
+          session added +5 (up to +15), while each wet session subtracted 10
+          (up to -30).
+        </p>
+
+        <div class="diagram"><span class="dim">Score =</span> <span class="highlight">100</span>
+  <span class="dim">-</span> precipitation penalty  <span class="dim">(0 to 100)</span>
+  <span class="dim">-</span> humidity penalty       <span class="dim">(0 to 20)</span>
+  <span class="dim">+</span> wind bonus             <span class="dim">(0 to 15)</span>
+  <span class="dim">+</span> surface modifier       <span class="dim">(-10 to +8)</span>
+  <span class="dim">+</span> sun modifier           <span class="dim">(-5 to +12)</span>
+  <span class="dim">+</span> drainage modifier      <span class="dim">(-15 to +10)</span>
+  <span class="dim">+</span> temperature modifier   <span class="dim">(-15 to +10)</span>
+  <span class="dim">+</span> tolerance offset       <span class="dim">(user setting)</span>
+  <span class="dim">+</span> session adjustment     <span class="dim">(community)</span></div>
+
+        <h3>Improvements over v1.0</h3>
+        <ul>
+          <li>A modern smooth concrete park in direct sun with good drainage now scored significantly higher than a shaded, cracked asphalt lot.</li>
+          <li>Community session reports provided real ground truth to adjust the score.</li>
+          <li>Temperature awareness meant cold mornings correctly showed slower drying.</li>
+        </ul>
+
+        <h3>Remaining limitations</h3>
+        <ul>
+          <li>The modifiers were fixed point values, not physics-derived. A "+8" for modern concrete was a hand-tuned guess, not calculated from the material's actual thermal properties.</li>
+          <li>The 6-hour linear drying curve still ignored real evaporation conditions. A hot, dry, windy day dried a park just as slowly as a cold, humid, still night.</li>
+          <li>Session adjustment was a simple +/-  arithmetic, not statistically weighted. A single unreliable report could shift the score as much as a trustworthy one.</li>
+          <li>No condensation or dew point awareness. A metal ramp could show "dry" at midnight even when condensation was forming on the surface.</li>
+        </ul>
+      </div>
+
+      <!-- ─── SDE ──────────────────────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">Current</span>
+        <h2>Skateboarding Dryness Engine (SDE) <span class="version-badge badge-current">Current</span></h2>
+        <p>
+          The SDE is a ground-up rewrite that replaces the additive points model
+          with real evaporation physics. Instead of guessing how long a surface
+          takes to dry, it calculates the actual rate of moisture leaving the
+          surface based on thermodynamic principles used in meteorology,
+          hydrology, and materials science.
+        </p>
+
+        <div class="callout">
+          <p>
+            The SDE uses the Penman-Monteith equation, the global standard for
+            calculating evapotranspiration. The same equation is used by the UN
+            Food and Agriculture Organization, national weather services, and
+            agricultural research institutions worldwide. We adapted it for
+            skatepark and street spot surfaces.
+          </p>
+        </div>
+
+        <!-- Formal algorithm specification -->
+        <h3>Algorithm specification</h3>
+        <p>
+          The complete SDE pipeline expressed as formal equations. Every score
+          calculation passes through these stages in sequence.
+        </p>
+
+        <div class="diagram"><span class="accent">SKATEBOARDING DRYNESS ENGINE  v2.0</span>
+<span class="dim">────────────────────────────────────────────────</span>
+
+<span class="accent">Stage 1: Thermodynamic Core</span>
+
+  e_s(T) = 0.611 exp(17.27T / (T + 237.3))          <span class="dim">// saturation vapour pressure (kPa)</span>
+
+  <span class="highlight">VPD</span> = e_s(T) (1 - RH / 100)                        <span class="dim">// vapour pressure deficit</span>
+
+  R_n = (1 - <span class="warn">α</span>) S_rad sin(<span class="warn">π</span>h/L) (1 - C/100) f_sun   <span class="dim">// net radiation (W/m²)</span>
+
+  <span class="highlight">D_base</span> = 100 - H_pen - T_pen + W_bon + R_bon        <span class="dim">// baseline dryness</span>
+  <span class="dim">where H_pen = max(0, (RH - 70)/30) x 8</span>
+  <span class="dim">      T_pen = max(0, (10 - T)/10) x 5</span>
+  <span class="dim">      W_bon = min(v/30, 1) x 5</span>
+  <span class="dim">      R_bon = (R_n / 800) x 10</span>
+
+<span class="dim">        |</span>
+<span class="dim">        v</span>
+
+<span class="accent">Stage 1b: Freeze Detection</span>
+
+  T_eff = T - min(0.1v, 3)                            <span class="dim">// wind chill adjusted</span>
+
+  <span class="dim">if T_eff &lt; -3:   D_base -= 15</span>
+  <span class="dim">if -3 &lt; T_eff &lt; 0: D_base -= 5..8</span>
+
+<span class="dim">        |</span>
+<span class="dim">        v</span>
+
+<span class="accent">Stage 2: Bayesian Data Fusion</span>
+
+  W_t = e^(-<span class="warn">λ</span>t)    <span class="warn">λ</span> = ln(2) / 30                    <span class="dim">// 30-min half-life decay</span>
+
+  nudge = sgn(net) min(<span class="warn">√</span>|net| x 3, 15)               <span class="dim">// bounded adjustment</span>
+
+  <span class="highlight">D_fused</span> = D_base + nudge
+
+<span class="dim">        |</span>
+<span class="dim">        v</span>
+
+<span class="accent">Stage 3: Graduated Rain Scoring</span>
+
+  k = 0.02 (1 + 2 VPD)(1 - 0.3<span class="warn">Φ</span>) f_night            <span class="dim">// drying constant</span>
+
+  <span class="dim">if raining:</span>
+    <span class="dim">floor(p &lt; 0.3mm) = 70%   if t_recovery &lt; 15m</span>
+    <span class="dim">floor(p &lt; 1mm)   = 50%   if t_recovery &lt; 15m</span>
+    <span class="dim">floor(p &gt; 1mm)   = 15%   if t_recovery &lt; 30m</span>
+
+  <span class="dim">if post-rain:</span>
+  <span class="highlight">D_recovered</span> = D_fused (1 - e^(-kt))                 <span class="dim">// exponential recovery</span>
+
+  t_recovery = -ln(0.1) / k                           <span class="dim">// est. minutes to 90% dry</span>
+
+<span class="dim">        |</span>
+<span class="dim">        v</span>
+
+<span class="accent">Stage 4: Session Window</span>
+
+  <span class="dim">if rain forecast in &lt; 2h:</span>
+  penalty = 15 (1 - t_rain / 120)
+
+<span class="dim">        |</span>
+<span class="dim">        v</span>
+
+<span class="accent">Stage 5: Display Filter</span>
+
+  <span class="highlight">D_display</span> = 100 - (100 - D)(2 - G) + P              <span class="dim">// grip amplifies wetness</span>
+
+  <span class="dim">when D = 100:  D_display = 100  <span class="warn">∀</span> G</span>                <span class="dim">// dry = 100% all materials</span></div>
+
+        <!-- Stage 1 detail -->
+        <h3>Stage 1: Thermodynamic Core</h3>
+        <p>
+          The core treats each skatepark surface as a boundary layer where two
+          forces compete to evaporate moisture:
+        </p>
+        <ul>
+          <li><strong>Net Radiation (R_n)</strong> provides the energy for the
+          latent heat of vaporization, the energy required to break the
+          molecular bonds of liquid water and turn it into gas. Darker surfaces
+          (low albedo) absorb more solar energy. At night, R_n drops to zero
+          and drying relies entirely on wind.</li>
+          <li><strong>Vapor Pressure Deficit (VPD)</strong> measures the
+          difference between how much moisture the air could hold (saturation
+          pressure) and how much it actually holds. High VPD means the air is
+          "thirsty" and can absorb moisture quickly. On a humid day, even
+          strong sun will not dry a park fast because the air has no room for
+          more water vapor.</li>
+        </ul>
+
+        <div class="formula">
+          <span class="label">Vapor Pressure Deficit</span>
+          VPD = e_s(T) x (1 - RH / 100)
+          <br />where e_s(T) = 0.611 x exp(17.27 x T / (T + 237.3))
+        </div>
+
+        <div class="formula">
+          <span class="label">Net Radiation (daytime)</span>
+          R_n = (1 - albedo) x S_rad x cloud_factor x sun_factor
+        </div>
+
+        <p>
+          The engine also detects condensation risk. When the estimated surface
+          temperature drops below the dew point (common on metal ramps at night),
+          a condensation penalty of 40% to 80% is applied depending on the
+          material's thermal conductivity. This is why a metal ramp can show as
+          slick even on a rainless night.
+        </p>
+
+        <!-- Materials science -->
+        <h3>Materials science</h3>
+        <p>
+          Different surfaces interact with solar radiation and water in
+          fundamentally different ways. The SDE uses measured physical properties
+          for each material type:
+        </p>
+
+        <table class="material-table">
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Albedo</th>
+              <th>Porosity</th>
+              <th>Grip</th>
+              <th>Behaviour</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Asphalt</td>
+              <td>0.10</td>
+              <td>0.3</td>
+              <td>0.9</td>
+              <td>Absorbs ~90% of solar radiation, creating a heat island that drives evaporation</td>
+            </tr>
+            <tr>
+              <td>Modern concrete</td>
+              <td>0.35</td>
+              <td>0.2</td>
+              <td>1.0</td>
+              <td>Reflects more light, stays cooler, relies more on wind-driven drying</td>
+            </tr>
+            <tr>
+              <td>Aged concrete</td>
+              <td>0.25</td>
+              <td>0.5</td>
+              <td>0.8</td>
+              <td>Higher porosity traps water in cracks and pores, extending drying time</td>
+            </tr>
+            <tr>
+              <td>Wood</td>
+              <td>0.25</td>
+              <td>0.8</td>
+              <td>0.6</td>
+              <td>Highly porous, absorbs and retains moisture, low grip when damp</td>
+            </tr>
+            <tr>
+              <td>Metal</td>
+              <td>0.40</td>
+              <td>0.0</td>
+              <td>0.4</td>
+              <td>Zero porosity but highly reflective and conductive, prone to condensation</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          <strong>Albedo</strong> determines how much solar energy a surface
+          absorbs. Asphalt (albedo 0.10) absorbs 90% of incoming radiation,
+          while metal (0.40) reflects nearly half of it.
+        </p>
+        <p>
+          <strong>Porosity</strong> determines how much water a surface traps
+          in its pores. Aged concrete and wood hold moisture long after the
+          surface appears dry to the eye.
+        </p>
+        <p>
+          <strong>Grip multiplier</strong> only matters when the surface is wet.
+          Dry surfaces always score 100% regardless of material. When wet,
+          grip amplifies the wetness penalty: a metal ramp (0.6) in light
+          rain scores much lower than concrete (1.0) in the same conditions,
+          because wet metal is genuinely dangerous. Once both dry out,
+          both read 100%.
+        </p>
+
+        <!-- Stage 2 detail -->
+        <h3>Stage 2: Bayesian Data Fusion</h3>
+        <p>
+          Weather models are imperfect. Microclimates, nearby buildings, tree
+          cover, and drainage quirks can all make a specific spot wetter or drier
+          than the forecast suggests. Community session reports provide real
+          ground truth to correct the physics model.
+        </p>
+        <p>
+          Instead of simply adding or subtracting points (as v1.1 did), the SDE
+          uses Bayesian statistical inference. The physics model is treated as the
+          <strong>prior probability</strong> (our best guess before seeing any
+          evidence), and each community session report is treated as
+          <strong>new evidence</strong>.
+        </p>
+
+        <div class="formula">
+          <span class="label">Bayesian Update</span>
+          P(dry | report) = P(report | dry) x P(dry) / P(report)
+        </div>
+
+        <p>
+          Each report is weighted by two factors:
+        </p>
+        <ul>
+          <li><strong>Trust factor</strong> (0.1 to 1.0): How reliable this
+          reporter has been historically.</li>
+          <li><strong>Time decay</strong>: Reports lose influence exponentially
+          with a 30-minute half-life. A session logged 5 minutes ago carries
+          far more weight than one from 2 hours ago.</li>
+        </ul>
+        <p>
+          The physics model always retains at least 50% of the weight, so even
+          multiple reports cannot fully override the thermodynamic prediction.
+          This prevents a single unreliable report from dramatically distorting
+          the score.
+        </p>
+
+        <!-- Stage 3 detail -->
+        <h3>Stage 3: Graduated Rain Scoring</h3>
+        <p>
+          Not all rain is equal. The SDE uses graduated rain scoring instead of
+          a binary wet/dry switch:
+        </p>
+        <ul>
+          <li><strong>Heavy rain (1+ mm/h)</strong>: score drops to 0%. The
+          surface is genuinely soaked.</li>
+          <li><strong>Moderate rain (0.3-1 mm/h)</strong>: score drops to a low
+          floor (up to 10%) based on how quickly the surface will dry once rain
+          stops.</li>
+          <li><strong>Light rain / spitting (&lt;0.3 mm/h)</strong>: score can
+          stay as high as 25% if conditions are warm and windy enough to dry
+          the surface within 30 minutes. The dashboard shows "est. dry in ~Xm"
+          so you know exactly when to head out.</li>
+        </ul>
+        <p>
+          Once rain stops, the score recovers along an exponential curve whose
+          rate depends on VPD, surface porosity, drainage quality, and whether
+          it is day or night. The recovery estimate is shown throughout the app:
+          on the dashboard, in widgets, and when sharing.
+        </p>
+        <p>
+          For spots with poor drainage, the score is hard-capped at 60% until a
+          VPD-based "puddle timer" expires. This reflects reality: even when most
+          of the surface is dry, standing puddles in low spots remain. Good
+          drainage has no cap and recovers faster.
+        </p>
+
+        <div class="formula">
+          <span class="label">Recovery Curve</span>
+          D_recovered = D_fused x (1 - e^(-k x t))
+          <br />where k = drying_constant(VPD, porosity, day/night)
+        </div>
+
+        <p>
+          The engine also estimates a recovery time: how many minutes until the
+          spot reaches 90% dryness. This powers the "EST. DRY IN" indicator on
+          the score forecast screen.
+        </p>
+
+        <!-- Stage 4 detail -->
+        <h3>Stage 4: Display Filter</h3>
+        <p>
+          The final score applies two adjustments before display:
+        </p>
+        <ul>
+          <li><strong>Grip multiplier (G)</strong>: Only affects wet surfaces.
+          When dry, every material scores 100%. Grip amplifies the wetness
+          penalty so slippery surfaces (metal, wood) show lower scores
+          during and after rain. A dry metal ramp and dry concrete both
+          read 100%.</li>
+          <li><strong>Tolerance offset (P)</strong>: Your personal preference
+          from -15 (strict, wants fully dry) to +15 (relaxed, comfortable
+          skating slightly damp).</li>
+        </ul>
+
+        <div class="formula">
+          <span class="label">Display Score</span>
+          D_display = 100 - (100 - D_recovered) x (2 - G) + P
+          <br />When dry (D_recovered=100): D_display = 100 for all materials
+        </div>
+      </div>
+
+      <!-- ─── Comparison diagram ───────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">Comparison</span>
+        <h2>What changed in practice</h2>
+        <p>
+          Here is a concrete example showing how the three engines score the same
+          scenario: a modern concrete park, direct sun, good drainage, 2 hours
+          after light rain, 22 degrees, 55% humidity, 12 km/h wind.
+        </p>
+
+        <div class="diagram"><span class="accent">v1.0</span>  100 - 47(rain decay) - 2(humidity) + 6(wind) = <span class="highlight">57</span>
+<span class="dim">       No park attributes. Same score for every surface.</span>
+
+<span class="accent">v1.1</span>  100 - 47 - 2 + 6 + 8(surface) + 12(sun) + 10(drain) + 5(temp) = <span class="highlight">92</span>
+<span class="dim">       Park attributes help, but the rain decay curve is identical.</span>
+
+<span class="accent">SDE</span>   Penman-Monteith computes evap rate from VPD + R_n  -->  <span class="highlight">78</span>
+<span class="dim">       Exponential recovery (not linear), adjusted for actual</span>
+<span class="dim">       conditions. The score reflects real drying physics.</span></div>
+
+        <p>
+          The SDE score of 78 is lower than v1.1's 92 because the physics model
+          accounts for the fact that 55% humidity and moderate wind at 22 degrees
+          produce a specific evaporation rate that requires more than 2 hours for
+          full recovery. The v1.1 linear decay was too optimistic.
+        </p>
+      </div>
+
+      <!-- ─── Score forecast ───────────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">New in SDE</span>
+        <h2>Score forecast timeline</h2>
+        <p>
+          Because the SDE can calculate a score for any point in time (given
+          forecast weather data), it now produces a full score trajectory: 48
+          hours in the past and 48 hours into the future.
+        </p>
+        <p>
+          Tap the score ring on the Dashboard to see the forecast. The chart
+          shows how the score has changed and how it is predicted to change,
+          with colour-coded fills (green for dry, amber for drying, red for wet)
+          and optional weather overlays for temperature, wind, rain, and humidity.
+        </p>
+        <p>
+          A mini preview of the forecast curve also appears inside the score ring
+          itself, giving you an at-a-glance sense of the trend without opening the
+          full forecast view.
+        </p>
+      </div>
+
+      <!-- ─── Session window ──────────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">New in SDE</span>
+        <h2>Session window</h2>
+        <p>
+          If rain is forecast within 2 hours, the score drops to reflect the
+          shrinking window for a session. The closer the rain, the larger the
+          penalty (up to -15 points). The dashboard hint shows exactly when
+          rain arrives: "Rain expected in ~45m. Session window closing."
+        </p>
+        <p>
+          This means you never start a session only to get rained out 20
+          minutes in. If the window is too tight, the score tells you to wait.
+        </p>
+      </div>
+
+      <!-- ─── Latitude-aware solar ──────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">New in SDE</span>
+        <h2>Latitude-aware solar model</h2>
+        <p>
+          Instead of a hardcoded 6am to 8pm day, the SDE calculates actual
+          sunrise and sunset from each spot's latitude and the date. In a UK
+          summer, that means drying starts at 4:30am and continues until
+          9:30pm - nearly 5 extra hours of solar-driven evaporation compared
+          to winter. In Scandinavia, the difference is even larger.
+        </p>
+        <div class="formula">
+          <span class="label">Solar Declination</span>
+          decl = -23.45 x cos(2pi x (doy + 10) / 365)
+        </div>
+      </div>
+
+      <!-- ─── Graduated rain scoring ──────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">New in SDE</span>
+        <h2>Graduated rain scoring</h2>
+        <p>
+          Previous engines used a binary switch: raining = 0%, not raining =
+          recovery curve. The SDE recognises that a 5-minute sprinkle in
+          sunshine is not the same as a downpour:
+        </p>
+        <ul>
+          <li><strong>Heavy rain (1+ mm/h)</strong>: score 0%. Surface is soaked.</li>
+          <li><strong>Moderate rain (0.3-1 mm/h)</strong>: floor up to 10%
+          based on how fast the surface will dry once it stops.</li>
+          <li><strong>Light rain / spitting (&lt;0.3 mm/h)</strong>: floor up
+          to 25% if drying conditions are good. The dashboard shows "est. dry
+          in ~Xm" so you know when to roll.</li>
+        </ul>
+      </div>
+
+      <!-- ─── Microclimate learning ──────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">New in SDE</span>
+        <h2>Microclimate learning</h2>
+        <p>
+          Weather models describe conditions over a broad area, but a specific
+          spot might be sheltered by buildings, sit in a wind tunnel, or retain
+          heat from surrounding asphalt. The SDE learns these quirks by
+          comparing historical session reports with what the physics model
+          predicted at the time.
+        </p>
+        <p>
+          If a spot is consistently wetter than predicted (for instance, a
+          sheltered bowl that takes longer to dry), the engine applies a
+          per-spot correction. This is aggregate data about the location
+          only - no individual user data is tracked or stored.
+        </p>
+      </div>
+
+      <!-- ─── Wind chill ──────────────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">New in SDE</span>
+        <h2>Wind chill awareness</h2>
+        <p>
+          When wind makes it feel significantly colder than the air temperature
+          (3C+ difference), the dashboard hint shows the feels-like temperature
+          using the North American Wind Chill Index formula. The surface might
+          be dry, but you will want an extra layer.
+        </p>
+        <div class="formula">
+          <span class="label">Wind Chill Index</span>
+          WCI = 13.12 + 0.6215T - 11.37V^0.16 + 0.3965TV^0.16
+          <br />where T = air temp (C), V = wind speed (km/h)
+        </div>
+      </div>
+
+      <!-- ─── Freeze detection ────────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">New in SDE</span>
+        <h2>Ice, frost, and snow detection</h2>
+        <p>
+          Freezing conditions make surfaces dangerous regardless of wetness.
+          The SDE detects freeze risk using air temperature adjusted for wind
+          chill:
+        </p>
+        <ul>
+          <li><strong>Hard freeze (below -3C)</strong>: -15 point penalty.
+          Surface likely iced over.</li>
+          <li><strong>Light frost (0C to -3C)</strong>: -5 to -8 point penalty.
+          Frost likely in shaded areas. Burns off once the sun hits.</li>
+          <li><strong>Near freezing (0C to 2C)</strong>: hint only, minimal
+          score impact. Cold air is often very dry, so the surface can be
+          perfectly skateable.</li>
+          <li><strong>Above 2C</strong>: no freeze risk.</li>
+        </ul>
+        <p>
+          The freeze penalties are intentionally gentle. Cold air is frequently
+          very dry, and a light overnight frost burns off quickly in morning
+          sun. The hints are more important than the score impact: they warn
+          you to watch for slick patches without crying wolf. Only sustained
+          hard freezes warrant a significant penalty, as actual ice formation
+          makes surfaces genuinely dangerous. Recovery from a freeze requires
+          sustained above-zero temperatures to melt the ice first, then normal
+          evaporation to dry the meltwater. This makes freeze recovery
+          significantly slower than rain recovery.
+        </p>
+      </div>
+
+      <!-- ─── Environment attributes ─────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">New in SDE</span>
+        <h2>Environment attributes</h2>
+        <p>
+          Five optional per-spot attributes let the engine account for local
+          conditions that weather data alone cannot capture:
+        </p>
+
+        <table class="material-table">
+          <thead>
+            <tr>
+              <th>Attribute</th>
+              <th>Options</th>
+              <th>Effect on scoring</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Cover</td>
+              <td>None / Partial / Full</td>
+              <td>Full cover blocks 100% of rain. Partial blocks 60%. A fully covered park scores near 100% even during a downpour.</td>
+            </tr>
+            <tr>
+              <td>Wind exposure</td>
+              <td>Sheltered / Normal / Exposed</td>
+              <td>Scales the aerodynamic drying term. Sheltered = 0.4x wind effect. Exposed = 1.5x.</td>
+            </tr>
+            <tr>
+              <td>Elevation</td>
+              <td>Low-lying / Level / Elevated</td>
+              <td>Elevated spots upgrade drainage one tier (poor becomes average). Low-lying extends puddle persistence.</td>
+            </tr>
+            <tr>
+              <td>Tree cover</td>
+              <td>On / Off</td>
+              <td>Trees drip for ~45 minutes after rain stops. The engine extends the effective "last rained at" time accordingly.</td>
+            </tr>
+            <tr>
+              <td>Nearby water</td>
+              <td>On / Off</td>
+              <td>Coastal or riverside spots have higher local humidity. The engine adds 8 percentage points to the effective humidity reading.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          All environment attributes are optional. Parks without them use
+          sensible defaults (no cover, normal wind, level, no trees, no water)
+          and score identically to before. Setting them fine-tunes the
+          prediction for spots where weather data alone misses local quirks.
+        </p>
+      </div>
+
+      <!-- ─── Scientific references ────────────────────────────── -->
+      <div class="section">
+        <span class="section-label">References</span>
+        <h2>Scientific foundations</h2>
+        <p>
+          The SDE is grounded in peer-reviewed research spanning decades of
+          evaporation science and surface hydrology.
+        </p>
+
+        <div class="reference">
+          <p class="author">Penman, H. L. (1948) <a href="https://doi.org/10.1098/rspa.1948.0037" style="color:#60a5fa;font-size:12px;text-decoration:none;">view &rsaquo;</a></p>
+          <p class="title">Natural evaporation from open water, bare soil and grass</p>
+          <p class="why">
+            The foundational work proving that evaporation depends on both energy
+            supply (radiation) and the Vapor Pressure Deficit, not temperature
+            alone. This is the basis for the SDE's thermodynamic core.
+          </p>
+        </div>
+
+        <div class="reference">
+          <p class="author">Monteith, J. L. (1965) <a href="https://repository.rothamsted.ac.uk/item/8v5v7/evaporation-and-environment" style="color:#60a5fa;font-size:12px;text-decoration:none;">view &rsaquo;</a></p>
+          <p class="title">Evaporation and environment</p>
+          <p class="why">
+            Extended Penman's equation to include surface resistance, the property
+            that makes different materials dry at different rates. This is why wood
+            and concrete produce different scores in the SDE even in identical weather.
+          </p>
+        </div>
+
+        <div class="reference">
+          <p class="author">Li et al. (2013) <a href="https://doi.org/10.1016/j.jhydrol.2013.06.042" style="color:#60a5fa;font-size:12px;text-decoration:none;">view &rsaquo;</a></p>
+          <p class="title">Modeling the evaporation from wet pavement surfaces</p>
+          <p class="why">
+            Specifically studied how paved surfaces (roads, car parks, and by
+            extension skateparks) dry after rain. Demonstrated that water persists
+            in surface pores long after the visible surface appears dry, which
+            informs the SDE's porosity-based drying model.
+          </p>
+        </div>
+
+        <div class="reference">
+          <p class="author">Allen, R. G. et al. (1998) <a href="https://www.fao.org/3/x0490e/x0490e00.htm" style="color:#60a5fa;font-size:12px;text-decoration:none;">view &rsaquo;</a></p>
+          <p class="title">FAO Irrigation and Drainage Paper No. 56: Crop evapotranspiration</p>
+          <p class="why">
+            The UN FAO's definitive guide to applying the Penman-Monteith equation
+            for practical evaporation estimation. Provides the standardised
+            methodology the SDE adapts for hard surfaces.
+          </p>
+        </div>
+
+        <div class="reference">
+          <p class="author">Bayes, T. / Laplace, P. S. (1763 / 1812) <a href="https://doi.org/10.1098/rstl.1763.0053" style="color:#60a5fa;font-size:12px;text-decoration:none;">view &rsaquo;</a></p>
+          <p class="title">Bayesian probability and inverse probability</p>
+          <p class="why">
+            The mathematical framework for updating predictions with new evidence.
+            The SDE uses Bayesian inference to blend physics-based dryness
+            predictions with community session reports, weighting each by
+            reliability and recency.
+          </p>
+        </div>
+
+        <div class="reference">
+          <p class="author">Herb, W. R. et al. (2008) <a href="https://doi.org/10.1016/j.jhydrol.2008.04.020" style="color:#60a5fa;font-size:12px;text-decoration:none;">view &rsaquo;</a></p>
+          <p class="title">Ground surface temperature simulation for different land covers</p>
+          <p class="why">
+            Modelled evaporation and temperature for paved surfaces including
+            concrete and asphalt under varying weather conditions. Their findings
+            on how surface material, elevation, and wind exposure affect drying
+            rates directly inform the SDE's material constants and environment
+            attributes.
+          </p>
+        </div>
+
+        <div class="reference">
+          <p class="author">Osczevski, R. &amp; Bluestein, M. (2005) <a href="https://doi.org/10.1175/BAMS-86-10-1453" style="color:#60a5fa;font-size:12px;text-decoration:none;">view &rsaquo;</a></p>
+          <p class="title">The new wind chill equivalent temperature chart</p>
+          <p class="why">
+            Defines the North American Wind Chill Index used by the SDE for
+            freeze detection and the feels-like temperature hint. Wind chill
+            adjusts the effective surface temperature to detect frost risk
+            even when air temperature is above zero.
+          </p>
+        </div>
+
+        <div class="reference">
+          <p class="author">Meeus, J. (1991) <a href="https://archive.org/details/astronomicalalgorithmsjeanmeeus1991" style="color:#60a5fa;font-size:12px;text-decoration:none;">view &rsaquo;</a></p>
+          <p class="title">Astronomical Algorithms</p>
+          <p class="why">
+            Provides the solar declination and hour angle equations used by
+            the SDE's latitude-aware solar model. Accurate sunrise and sunset
+            times mean the engine correctly accounts for 17-hour summer days
+            in northern Europe versus 8-hour winter days.
+          </p>
+        </div>
+
+        <div class="reference">
+          <p class="author">Oke, T. R. (1987) <a href="https://doi.org/10.4324/9780203407219" style="color:#60a5fa;font-size:12px;text-decoration:none;">view &rsaquo;</a></p>
+          <p class="title">Boundary Layer Climates</p>
+          <p class="why">
+            The standard reference for urban microclimate physics, including
+            how albedo, thermal mass, and surface geometry affect local
+            temperature and moisture. Informs the SDE's material constants
+            table and the microclimate learning system.
+          </p>
+        </div>
+      </div>
+
+    </main>
+
+    <footer>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/disclaimer">Disclaimer</a>
+      <a href="/support">Support</a>
+      <a href="/releases">Releases</a>
+      <a href="/roadmap">Roadmap</a>
+      <a href="/engine">Engine</a>
+    </footer>
+  </body>
+</html>
