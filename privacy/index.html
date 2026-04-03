@@ -5,7 +5,7 @@
     <title>Privacy Policy – Skateable</title>
     <script>
       var v = new URLSearchParams(window.location.search).get("v");
-      var dest = v === "1.0" ? "/privacy/v1.0/" : "/privacy/v1.1/";
+      var dest = v === "1.0" ? "/privacy/v1.0/" : v === "1.2" ? "/privacy/v1.2/" : "/privacy/v1.1/";
       window.location.replace(dest);
     </script>
   </head>
