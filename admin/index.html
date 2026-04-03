@@ -5,28 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Skateable Admin</title>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
       :root {
-        --bg:       #070707;
-        --s1:       #0d0d0d;
-        --s2:       #121212;
-        --s3:       #181818;
-        --b1:       #1a1a1a;
-        --b2:       #242424;
-        --b3:       #303030;
-        --text:     #ececec;
-        --dim:      #555;
-        --muted:    #2a2a2a;
-        --accent:   #ff5500;
-        --adim:     rgba(255,85,0,0.1);
+        --bg:       #1A1A1A;
+        --s1:       #1A1A1A;
+        --s2:       #2A2A2A;
+        --s3:       #333333;
+        --b1:       rgba(255,255,255,0.12);
+        --b2:       rgba(255,255,255,0.2);
+        --b3:       rgba(255,255,255,0.3);
+        --text:     #FFFFFF;
+        --dim:      #A0A0A0;
+        --muted:    rgba(255,255,255,0.25);
+        --accent:   #3B82F6;
+        --adim:     rgba(59,130,246,0.12);
         --green:    #22c55e;
-        --red:      #ef4444;
-        --blue:     #5b9cf6;
+        --red:      #B91C1C;
+        --blue:     #3B82F6;
         --amber:    #f59e0b;
-        --mono:     'JetBrains Mono', monospace;
-        --sans:     'DM Sans', -apple-system, sans-serif;
-        --display:  'Bebas Neue', sans-serif;
+        --mono:     'Inter', -apple-system, sans-serif;
+        --sans:     'Inter', -apple-system, sans-serif;
+        --display:  'Inter', -apple-system, sans-serif;
       }
 
       * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -54,13 +54,14 @@
       }
 
       .header-brand { display: flex; align-items: center; gap: 10px; }
-      .header-logo  { width: 24px; height: 24px; border-radius: 5px; }
+      .header-logo  { width: 24px; height: 24px; border-radius: 8px; }
 
       header h1 {
-        font-family: var(--display);
-        font-size: 20px;
-        font-weight: 400;
-        letter-spacing: 2.5px;
+        font-family: var(--sans);
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
         color: var(--text);
       }
 
@@ -72,10 +73,11 @@
       }
 
       #login h2 {
-        font-family: var(--display);
-        font-size: 36px;
-        font-weight: 400;
-        letter-spacing: 3px;
+        font-family: var(--sans);
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
         margin-bottom: 32px;
         color: var(--text);
       }
@@ -98,7 +100,7 @@
         padding: 9px 11px;
         background: var(--s2);
         border: 1px solid var(--b2);
-        border-radius: 5px;
+        border-radius: 8px;
         color: var(--text);
         font-family: var(--sans);
         font-size: 13px;
@@ -113,7 +115,7 @@
       button {
         padding: 8px 14px;
         border: none;
-        border-radius: 5px;
+        border-radius: 8px;
         font-family: var(--mono);
         font-size: 11px;
         font-weight: 600;
@@ -153,7 +155,7 @@
         flex-wrap: wrap;
         margin-bottom: 52px;
         border: 1px solid var(--b1);
-        border-radius: 7px;
+        border-radius: 8px;
         overflow: hidden;
         background: var(--b1); /* gap colour */
         gap: 1px;
@@ -270,7 +272,7 @@
       .photo-card {
         background: var(--s1);
         border: 1px solid var(--b1);
-        border-radius: 7px;
+        border-radius: 8px;
         overflow: hidden;
       }
 
@@ -366,7 +368,7 @@
       .dup-card {
         background: var(--s1);
         border: 1px solid var(--b2);
-        border-radius: 7px;
+        border-radius: 8px;
         padding: 14px;
       }
 
@@ -380,7 +382,7 @@
       .dup-park {
         background: var(--bg);
         border: 1px solid var(--b1);
-        border-radius: 5px;
+        border-radius: 8px;
         padding: 10px 12px;
       }
 
@@ -425,7 +427,7 @@
         align-items: center;
         gap: 12px;
         padding: 10px 12px;
-        border-radius: 5px;
+        border-radius: 8px;
         transition: background 0.1s;
       }
 
@@ -523,7 +525,7 @@
           grid-template-rows: auto auto;
           background: var(--s1);
           border: 1px solid var(--b1);
-          border-radius: 5px;
+          border-radius: 8px;
           padding: 10px;
         }
         table tr:hover td { background: transparent; }
@@ -539,7 +541,7 @@
         table tr.editing-row td { display: block; width: 100%; padding: 0; }
         table tr.editing-row td:nth-child(3) { display: block; }
 
-        table tr.parking-editing-row { display: flex; flex-direction: column; gap: 0; padding: 0; border-radius: 5px; background: var(--s1); overflow: hidden; }
+        table tr.parking-editing-row { display: flex; flex-direction: column; gap: 0; padding: 0; border-radius: 8px; background: var(--s1); overflow: hidden; }
         table tr.parking-editing-row td { display: block; width: 100%; padding: 0; border: none; }
       }
     </style>
@@ -755,7 +757,7 @@
                 <div class="recent-name">${escHtml(p.name)}</div>
                 <div class="recent-meta">
                   ${tagHtml}
-                  ${wasEdited ? '<span style="color:#555">edited</span>' : '<span style="color:#555">created</span>'}
+                  ${wasEdited ? '<span style="color:var(--dim)">edited</span>' : '<span style="color:var(--dim)">created</span>'}
                 </div>
               </div>
               <div class="recent-time">${relTime}</div>
@@ -894,7 +896,7 @@
           <header>
             <div class="header-brand">
               <img src="../icon.png" alt="" class="header-logo" />
-              <h1>SKATEABLE.<span style="color:var(--accent);font-weight:400"> ADMIN</span></h1>
+              <h1>SKATEABLE. <span style="color:var(--accent)">ADMIN</span></h1>
             </div>
             <button class="btn-logout" data-action="logout">Sign out</button>
           </header>
@@ -1066,7 +1068,7 @@
           return `
             <tr id="parking-row-${id}" class="editing-row parking-editing-row">
               <td class="parking-edit-cell" colspan="5">
-                <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:12px">
+                <div style="font-size:13px;font-weight:600;color:var(--dim);margin-bottom:12px">
                   ${escHtml(park.name)}
                 </div>
                 <div class="parking-edit-grid">
@@ -1081,12 +1083,12 @@
                       value="${escAttr(String(pl.longitude ?? ''))}" step="any" placeholder="Longitude" />
                   </div>
                   <div class="field parking-edit-full">
-                    <label>Address <span style="color:#444;font-weight:400">(optional)</span></label>
+                    <label>Address <span style="color:var(--dim);font-weight:400">(optional)</span></label>
                     <input type="text" id="edit-pl-addr-${id}"
                       value="${escAttr(pl.address ?? '')}" placeholder="e.g. High Street, Bicester" />
                   </div>
                   <div class="field parking-edit-full">
-                    <label>Notes <span style="color:#444;font-weight:400">(optional, max 200 chars)</span></label>
+                    <label>Notes <span style="color:var(--dim);font-weight:400">(optional, max 200 chars)</span></label>
                     <input type="text" id="edit-pl-notes-${id}" maxlength="200"
                       value="${escAttr(pl.notes ?? '')}" placeholder="e.g. Free parking on weekends" />
                   </div>
