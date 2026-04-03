@@ -2,100 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Privacy Policy – Skateable</title>
-    <style>
-      body {
-        font-family: -apple-system, sans-serif;
-        max-width: 680px;
-        margin: 48px auto;
-        padding: 0 24px;
-        color: #1a1a1a;
-        line-height: 1.6;
-      }
-      h1 {
-        font-size: 28px;
-        margin-bottom: 4px;
-      }
-      h2 {
-        font-size: 16px;
-        margin-top: 32px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #444;
-      }
-      p,
-      li {
-        font-size: 15px;
-        color: #333;
-      }
-      a {
-        color: #2563eb;
-      }
-      .meta {
-        color: #888;
-        font-size: 13px;
-        margin-bottom: 40px;
-      }
-    </style>
+    <script>
+      var v = new URLSearchParams(window.location.search).get("v");
+      var dest = v === "1.0" ? "/privacy/v1.0/" : "/privacy/v1.1/";
+      window.location.replace(dest);
+    </script>
   </head>
-  <body>
-    <a href="/"><img src="/icon.png" alt="Skateable" style="width:52px;height:52px;border-radius:12px;display:block;margin-bottom:20px;" /></a>
-    <h1>Privacy Policy</h1>
-    <p class="meta">Last updated: 1 April 2025</p>
-
-    <h2>What we collect</h2>
-    <ul>
-      <li>
-        <strong>Anonymous user ID: </strong>generated automatically on first launch via Supabase.
-        No name, email, or account is required.
-      </li>
-      <li>
-        <strong>Locations you add: </strong>name and coordinates, stored in our database and readable
-        by other users.
-      </li>
-      <li>
-        <strong>Sessions you log: </strong>dry/wet status, optional notes, timestamp, and anonymous
-        user ID.
-      </li>
-      <li><strong>Location flags: </strong>the flag reason and anonymous user ID.</li>
-      <li>
-        <strong>Location: </strong>used on-device only to calculate distances and show nearby
-        locations. Never sent to our servers.
-      </li>
-      <li>
-        <strong>Weather data: </strong>fetched from Open-Meteo using your location coordinates. No
-        personal data is sent.
-      </li>
-    </ul>
-
-    <h2>What we don't collect</h2>
-    <p>No name, email, phone number, device identifier, or usage analytics.</p>
-
-    <h2>Data storage</h2>
-    <p>
-      Locations, sessions, and flags are stored in Supabase hosted on AWS infrastructure. Anonymous user
-      IDs are stored locally on your device.
-    </p>
-
-    <h2>Data deletion</h2>
-    <p>
-      Tap <strong>Settings → Reset App</strong> to delete all locally stored data.
-    </p>
-
-    <h2>Third parties</h2>
-    <ul>
-      <li>
-        Supabase (database and auth):
-        <a href="https://supabase.com/privacy">supabase.com/privacy</a>
-      </li>
-      <li>
-        Open-Meteo (weather):
-        <a href="https://open-meteo.com/en/terms">open-meteo.com/en/terms</a>
-      </li>
-    </ul>
-
-    <h2>Contact</h2>
-    <p><a href="mailto:skateable@paulmwhite.com">skateable@paulmwhite.com</a></p>
-  </body>
+  <body></body>
 </html>
