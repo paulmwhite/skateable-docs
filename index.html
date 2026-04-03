@@ -62,7 +62,11 @@
         line-height: 1.6;
       }
       footer {
-        text-align: center;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 4px 0;
         padding: 24px;
         color: #444;
         font-size: 13px;
@@ -70,7 +74,20 @@
       footer a {
         color: #555;
         text-decoration: none;
-        margin: 0 8px;
+        white-space: nowrap;
+      }
+      footer a + a::before {
+        content: "•";
+        color: #444;
+        padding: 0 6px;
+      }
+      @media (max-width: 420px) {
+        footer {
+          font-size: 11px;
+        }
+        footer a + a::before {
+          padding: 0 5px;
+        }
       }
     </style>
   </head>
@@ -79,7 +96,7 @@
       <img src="/icon.png" alt="Skateable" style="width:96px;height:96px;border-radius:22px;margin-bottom:20px;" />
       <h1>SKATEABLE.</h1>
       <p class="tagline">Stop Driving to Wet Spots.</p>
-      <a class="badge" href="https://apps.apple.com/us/app/skateable/id6761426202">
+      <a class="badge" href="https://apps.apple.com/gb/app/skateable/id6761426202">
         <img
           src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
           alt="Download on the App Store"

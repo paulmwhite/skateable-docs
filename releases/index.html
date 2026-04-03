@@ -133,7 +133,11 @@
         font-style: italic;
       }
       footer {
-        text-align: center;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 4px 0;
         padding: 24px;
         color: #444;
         font-size: 13px;
@@ -141,7 +145,20 @@
       footer a {
         color: #555;
         text-decoration: none;
-        margin: 0 8px;
+        white-space: nowrap;
+      }
+      footer a + a::before {
+        content: "•";
+        color: #444;
+        padding: 0 6px;
+      }
+      @media (max-width: 420px) {
+        footer {
+          font-size: 11px;
+        }
+        footer a + a::before {
+          padding: 0 5px;
+        }
       }
     </style>
   </head>
