@@ -145,6 +145,16 @@
         color: #4ade80;
         border: 1px solid #1a4d2a;
       }
+      .badge-review {
+        background: #2a1f00;
+        color: #facc15;
+        border: 1px solid #4a3800;
+      }
+      .badge-upcoming {
+        background: #0d1f3c;
+        color: #60a5fa;
+        border: 1px solid #1a3460;
+      }
 
       /* Diagram cards */
       .diagram {
@@ -362,7 +372,7 @@
               <th>Capability</th>
               <th>v1.0</th>
               <th>v1.1</th>
-              <th>SDE</th>
+              <th>SDE (v1.2)</th>
             </tr>
           </thead>
           <tbody>
@@ -486,8 +496,8 @@
 
       <!-- ─── v1.0 ──────────────────────────────────────────────── -->
       <div class="section">
-        <span class="section-label">Legacy</span>
-        <h2>Engine v1.0 <span class="version-badge badge-legacy">v1.0</span></h2>
+        <span class="section-label">Current</span>
+        <h2>Engine v1.0 <span class="version-badge badge-current">Current</span></h2>
         <p>
           The original scoring engine shipped with Skateable 1.0 in March 2025. It
           used a simple weather-only model: fetch current conditions and 48 hours
@@ -518,8 +528,8 @@
 
       <!-- ─── v1.1 ──────────────────────────────────────────────── -->
       <div class="section">
-        <span class="section-label">Legacy</span>
-        <h2>Engine v1.1 <span class="version-badge badge-legacy">v1.1</span></h2>
+        <span class="section-label">In Review</span>
+        <h2>Engine v1.1 <span class="version-badge badge-review">In Review</span></h2>
         <p>
           Version 1.1 introduced park attributes and community session data,
           making the score location-specific for the first time.
@@ -563,8 +573,8 @@
 
       <!-- ─── SDE ──────────────────────────────────────────────── -->
       <div class="section">
-        <span class="section-label">Current</span>
-        <h2>Skateboarding Dryness Engine (SDE) <span class="version-badge badge-current">Current</span></h2>
+        <span class="section-label">Coming in v1.2</span>
+        <h2>Skateboarding Dryness Engine (SDE) <span class="version-badge badge-upcoming">v1.2</span></h2>
         <p>
           The SDE is a ground-up rewrite that replaces the additive points model
           with real evaporation physics. Instead of guessing how long a surface
