@@ -1009,6 +1009,8 @@
       const CATEGORY_LABELS = {
         wrong_location: 'Wrong Location',
         permanently_closed: 'Permanently Closed',
+        temporarily_closed: 'Temporarily Closed',
+        no_longer_closed: 'No Longer Closed',
         dangerous_conditions: 'Dangerous Conditions',
         duplicate_listing: 'Duplicate Listing',
         inappropriate_content: 'Inappropriate Content',
@@ -1019,6 +1021,8 @@
       const CATEGORY_COLORS = {
         wrong_location: { bg: 'rgba(59,130,246,0.12)', fg: 'var(--blue)' },
         permanently_closed: { bg: 'rgba(185,28,28,0.12)', fg: 'var(--red)' },
+        temporarily_closed: { bg: 'rgba(245,158,11,0.15)', fg: 'var(--amber)' },
+        no_longer_closed: { bg: 'rgba(34,197,94,0.15)', fg: 'var(--green)' },
         dangerous_conditions: { bg: 'rgba(245,158,11,0.15)', fg: 'var(--amber)' },
         duplicate_listing: { bg: 'rgba(160,160,160,0.15)', fg: 'var(--dim)' },
         inappropriate_content: { bg: 'rgba(185,28,28,0.12)', fg: 'var(--red)' },
@@ -1158,6 +1162,60 @@
             <table>
               <thead><tr><th>Park</th><th>Category</th><th>Reason</th><th>Status</th><th>Updated</th><th></th></tr></thead>
               <tbody id="flags-body">${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      // ─── Closed parks ─────────────────────────────────────────────────────
+
+      async function loadClosedParks() {
+        const { data, error } = await db
+          .from('park_flags')
+          .select('id, park_id, category, reason, approved, created_at, updated_at, parks(id, name, latitude, longitude)')
+          .in('category', ['permanently_closed', 'temporarily_closed'])
+          .eq('approved', true)
+          .order('updated_at', { ascending: false })
+          .limit(100);
+        if (error) throw error;
+        return data ?? [];
+      }
+
+      async function unclosePark(flagId) {
+        const { error } = await db
+          .from('park_flags')
+          .delete()
+          .eq('id', flagId);
+        if (error) throw error;
+      }
+
+      function renderClosedParks(flags) {
+        if (flags.length === 0) return '<p class="empty">No closed parks.</p>';
+        const rows = flags.map(f => {
+          const parkName = f.parks?.name ?? 'Unknown park';
+          const updated = timeAgo(new Date(f.updated_at));
+          const catBadge = categoryBadge(f.category);
+          const coords = f.parks ? `${f.parks.latitude.toFixed(4)}, ${f.parks.longitude.toFixed(4)}` : '';
+          return `
+            <tr id="closed-row-${f.id}">
+              <td>${escHtml(parkName)}</td>
+              <td><span style="color:var(--dim);font-size:11px">${coords}</span></td>
+              <td>${catBadge}</td>
+              <td style="font-size:12px;color:var(--dim);max-width:260px">${escHtml(f.reason)}</td>
+              <td>${updated}</td>
+              <td>
+                <div class="park-actions">
+                  <button class="btn-approve" data-action="unclose-park" data-id="${f.id}">Reopen</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+        return `
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Park</th><th>Coords</th><th>Status</th><th>Reason</th><th>Closed</th><th></th></tr></thead>
+              <tbody id="closed-body">${rows}</tbody>
             </table>
           </div>
         `;
@@ -1529,6 +1587,10 @@
                 <span class="summary-count loading">—</span>
                 park flags
               </div>
+              <div class="summary-chip" id="summary-closed" data-target-section="details-closed">
+                <span class="summary-count loading">—</span>
+                closed parks
+              </div>
               <div class="summary-chip" id="summary-reports" data-target-section="details-reports">
                 <span class="summary-count loading">—</span>
                 outdated reports
@@ -1588,6 +1650,12 @@
               <details id="details-flags">
                 <summary><h2>Park flags<span class="section-badge" id="badge-flags"></span> <span class="section-caret">▶</span></h2></summary>
                 <div id="flags-content" class="loading">Loading…</div>
+              </details>
+            </section>
+            <section>
+              <details id="details-closed">
+                <summary><h2>Closed parks<span class="section-badge" id="badge-closed"></span> <span class="section-caret">▶</span></h2></summary>
+                <div id="closed-content" class="loading">Loading…</div>
               </details>
             </section>
             <section>
@@ -1982,6 +2050,7 @@
           loadDuplicatesSection(),
           loadParkingSection(),
           loadFlagsSection(),
+          loadClosedSection(),
           loadNoteReportsSection(),
           loadParksAndNamesSection(),
         ]);
@@ -2077,6 +2146,18 @@
           const flags = await loadParkFlags();
           el.innerHTML = renderFlags(flags);
           updateSummaryChip('summary-flags', flags.length);
+        } catch (err) {
+          el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
+        }
+      }
+
+      async function loadClosedSection() {
+        const el = document.getElementById('closed-content');
+        if (!el) return;
+        try {
+          const closed = await loadClosedParks();
+          el.innerHTML = renderClosedParks(closed);
+          updateSummaryChip('summary-closed', closed.length);
         } catch (err) {
           el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
         }
@@ -2260,6 +2341,21 @@
             await markNameReviewed(btn.dataset.id);
             document.getElementById(`name-row-${btn.dataset.id}`)?.remove();
             decrementSummaryChip('summary-names');
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'unclose-park') {
+          if (!confirm('Reopen this park? The closed flag will be removed.')) return;
+          btn.disabled = true;
+          try {
+            await unclosePark(btn.dataset.id);
+            document.getElementById(`closed-row-${btn.dataset.id}`)?.remove();
+            decrementSummaryChip('summary-closed');
+            if (!document.querySelector('#closed-body tr')) {
+              document.getElementById('closed-content').innerHTML =
+                '<p class="empty">No closed parks.</p>';
+            }
           } catch (err) { alert(err.message); btn.disabled = false; }
           return;
         }
