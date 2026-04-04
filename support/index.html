@@ -9,6 +9,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <title>Support 🛹 Skateable</title>
     <style>
+      *, *::before, *::after { box-sizing: border-box; }
       body {
         font-family: -apple-system, sans-serif;
         max-width: 680px;
@@ -99,6 +100,105 @@
         font-size: 13px;
         color: #555;
         line-height: 1.5;
+      }
+      .crew-section {
+        margin-top: 40px;
+        border: 2px solid #1a1a1a;
+        border-radius: 12px;
+        padding: 28px 24px;
+        background: #fafafa;
+      }
+      .crew-section h2 {
+        margin-top: 0;
+        font-size: 20px;
+        text-transform: none;
+        letter-spacing: normal;
+        color: #1a1a1a;
+      }
+      .crew-section .crew-intro {
+        font-size: 14px;
+        color: #555;
+        margin-bottom: 20px;
+      }
+      .crew-tasks {
+        list-style: none;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 20px;
+      }
+      .crew-tasks li {
+        font-size: 12px;
+        font-weight: 500;
+        color: #1a1a1a;
+        background: #e9e9e9;
+        padding: 4px 10px;
+        border-radius: 20px;
+      }
+      .crew-form label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #666;
+        margin-bottom: 4px;
+        margin-top: 14px;
+      }
+      .crew-form label:first-of-type {
+        margin-top: 0;
+      }
+      .crew-form input,
+      .crew-form textarea {
+        width: 100%;
+        font-family: inherit;
+        font-size: 14px;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #fff;
+        color: #1a1a1a;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      .crew-form input:focus,
+      .crew-form textarea:focus {
+        border-color: #1a1a1a;
+      }
+      .crew-form textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+      .crew-submit {
+        display: inline-block;
+        margin-top: 18px;
+        background: #1a1a1a;
+        color: #fff;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .crew-submit:hover {
+        background: #333;
+      }
+      @media (max-width: 480px) {
+        body {
+          margin: 24px auto;
+          padding: 0 16px;
+        }
+        .crew-section {
+          padding: 20px 16px;
+        }
+        .crew-submit {
+          width: 100%;
+          text-align: center;
+        }
       }
       .bug-list {
         list-style: none;
@@ -216,5 +316,51 @@
         </li>
       </ul>
     </details>
+
+    <div class="crew-section">
+      <h2>Join the crew 🛹</h2>
+      <p class="crew-intro">
+        We're looking for a small team of locals who know their spots and want to
+        help keep Skateable dialled. Admins get access to the moderation tools
+        and help keep the community legit. Here's what you'd be handling:
+      </p>
+      <ul class="crew-tasks">
+        <li>Approve photos</li>
+        <li>Review name changes</li>
+        <li>Handle flagged parks</li>
+        <li>Check reported notes</li>
+        <li>Review parking suggestions</li>
+        <li>Spot duplicates</li>
+        <li>Manage closed parks</li>
+      </ul>
+      <form class="crew-form" id="crew-form">
+        <label for="crew-name">Your name</label>
+        <input type="text" id="crew-name" required placeholder="Tony" />
+        <label for="crew-email">Email</label>
+        <input type="email" id="crew-email" required placeholder="you@example.com" />
+        <label for="crew-city">City / region you skate</label>
+        <input type="text" id="crew-city" required placeholder="Melbourne, AU" />
+        <label for="crew-why">Why do you want to help out?</label>
+        <textarea id="crew-why" required placeholder="I skate three parks daily and I'm always flagging dodgy info anyway..."></textarea>
+        <button type="submit" class="crew-submit">Send it</button>
+      </form>
+      <script>
+        document.getElementById('crew-form').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var name = document.getElementById('crew-name').value;
+          var email = document.getElementById('crew-email').value;
+          var city = document.getElementById('crew-city').value;
+          var why = document.getElementById('crew-why').value;
+          var subject = encodeURIComponent('Admin request - ' + name);
+          var body = encodeURIComponent(
+            'Name: ' + name + '\n' +
+            'Email: ' + email + '\n' +
+            'City: ' + city + '\n\n' +
+            'Why:\n' + why
+          );
+          window.location.href = 'mailto:skateable@paulmwhite.com?subject=' + subject + '&body=' + body;
+        });
+      </script>
+    </div>
   </body>
 </html>
