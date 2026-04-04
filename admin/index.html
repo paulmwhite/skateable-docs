@@ -874,6 +874,72 @@
         await dismissReports(photoId);
       }
 
+      // ─── Note reports ─────────────────────────────────────────────────────
+
+      const noteReportRowData = new Map();
+
+      async function loadNoteReports() {
+        const { data, error } = await db
+          .from('note_reports')
+          .select('id, note_id, user_id, reason, reviewed, created_at, park_flags(id, park_id, reason, approved, parks(name))')
+          .eq('reviewed', false)
+          .order('created_at', { ascending: false })
+          .limit(100);
+        if (error) throw error;
+        return data ?? [];
+      }
+
+      async function dismissNoteReport(id) {
+        const { error } = await db
+          .from('note_reports')
+          .update({ reviewed: true })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      async function unapproveNote(noteId) {
+        const { error } = await db
+          .from('park_flags')
+          .update({ approved: false })
+          .eq('id', noteId);
+        if (error) throw error;
+      }
+
+      function renderNoteReportRow(r) {
+        const noteParkName = r.park_flags?.parks?.name ?? 'Unknown spot';
+        const noteText = r.park_flags?.reason ?? '(deleted)';
+        const reported = timeAgo(new Date(r.created_at));
+        return `
+          <tr id="note-report-row-${r.id}">
+            <td>${escHtml(noteParkName)}</td>
+            <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(noteText)}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(r.reason)}</td>
+            <td>${reported}</td>
+            <td>
+              <div class="park-actions">
+                <button class="btn-delete" data-action="hide-reported-note" data-id="${r.id}" data-note-id="${r.park_flags?.id ?? ''}">Remove note</button>
+                <button class="btn-cancel" data-action="dismiss-note-report" data-id="${r.id}">Dismiss</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }
+
+      function renderNoteReports(reports) {
+        if (reports.length === 0) return '<p class="empty">No note reports.</p>';
+        noteReportRowData.clear();
+        for (const r of reports) noteReportRowData.set(r.id, r);
+        const rows = reports.map(r => renderNoteReportRow(r)).join('');
+        return `
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Spot</th><th>Note</th><th>Report reason</th><th>Reported</th><th></th></tr></thead>
+              <tbody id="note-reports-body">${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
       // ─── Parks ───────────────────────────────────────────────────────────────
 
       async function loadParks(page = 0) {
@@ -946,6 +1012,7 @@
         dangerous_conditions: 'Dangerous Conditions',
         duplicate_listing: 'Duplicate Listing',
         inappropriate_content: 'Inappropriate Content',
+        community_note: 'Community Note',
         other: 'Other',
       };
 
@@ -955,6 +1022,7 @@
         dangerous_conditions: { bg: 'rgba(245,158,11,0.15)', fg: 'var(--amber)' },
         duplicate_listing: { bg: 'rgba(160,160,160,0.15)', fg: 'var(--dim)' },
         inappropriate_content: { bg: 'rgba(185,28,28,0.12)', fg: 'var(--red)' },
+        community_note: { bg: 'rgba(34,197,94,0.15)', fg: 'var(--green)' },
         other: { bg: 'rgba(160,160,160,0.15)', fg: 'var(--dim)' },
       };
 
@@ -1465,6 +1533,10 @@
                 <span class="summary-count loading">—</span>
                 outdated reports
               </div>
+              <div class="summary-chip" id="summary-note-reports" data-target-section="details-note-reports">
+                <span class="summary-count loading">—</span>
+                note reports
+              </div>
               <div class="summary-chip" id="summary-sessions" data-target-section="details-sessions">
                 <span class="summary-count loading">—</span>
                 recent sessions
@@ -1516,6 +1588,12 @@
               <details id="details-flags">
                 <summary><h2>Park flags<span class="section-badge" id="badge-flags"></span> <span class="section-caret">▶</span></h2></summary>
                 <div id="flags-content" class="loading">Loading…</div>
+              </details>
+            </section>
+            <section>
+              <details id="details-note-reports">
+                <summary><h2>Note reports<span class="section-badge" id="badge-note-reports"></span> <span class="section-caret">▶</span></h2></summary>
+                <div id="note-reports-content" class="loading">Loading…</div>
               </details>
             </section>
             <section>
@@ -1904,6 +1982,7 @@
           loadDuplicatesSection(),
           loadParkingSection(),
           loadFlagsSection(),
+          loadNoteReportsSection(),
           loadParksAndNamesSection(),
         ]);
       }
@@ -1998,6 +2077,18 @@
           const flags = await loadParkFlags();
           el.innerHTML = renderFlags(flags);
           updateSummaryChip('summary-flags', flags.length);
+        } catch (err) {
+          el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
+        }
+      }
+
+      async function loadNoteReportsSection() {
+        const el = document.getElementById('note-reports-content');
+        if (!el) return;
+        try {
+          const reports = await loadNoteReports();
+          el.innerHTML = renderNoteReports(reports);
+          updateSummaryChip('summary-note-reports', reports.length);
         } catch (err) {
           el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
         }
@@ -2300,6 +2391,41 @@
             if (!document.querySelector('#flags-body tr')) {
               document.getElementById('flags-content').innerHTML =
                 '<p class="empty">No park flags.</p>';
+            }
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'dismiss-note-report') {
+          const id = btn.dataset.id;
+          btn.disabled = true;
+          try {
+            await dismissNoteReport(id);
+            noteReportRowData.delete(id);
+            document.getElementById(`note-report-row-${id}`)?.remove();
+            decrementSummaryChip('summary-note-reports');
+            if (!document.querySelector('#note-reports-body tr')) {
+              document.getElementById('note-reports-content').innerHTML =
+                '<p class="empty">No note reports.</p>';
+            }
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'hide-reported-note') {
+          const id = btn.dataset.id;
+          const noteId = btn.dataset.noteId;
+          if (!noteId || !confirm('Remove this community note and dismiss the report?')) return;
+          btn.disabled = true;
+          try {
+            await unapproveNote(noteId);
+            await dismissNoteReport(id);
+            noteReportRowData.delete(id);
+            document.getElementById(`note-report-row-${id}`)?.remove();
+            decrementSummaryChip('summary-note-reports');
+            if (!document.querySelector('#note-reports-body tr')) {
+              document.getElementById('note-reports-content').innerHTML =
+                '<p class="empty">No note reports.</p>';
             }
           } catch (err) { alert(err.message); btn.disabled = false; }
           return;
