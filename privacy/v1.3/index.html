@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <title>Privacy Policy – Skateable</title>
+    <style>
+      body {
+        font-family: -apple-system, sans-serif;
+        max-width: 680px;
+        margin: 48px auto;
+        padding: 0 24px;
+        color: #1a1a1a;
+        line-height: 1.6;
+      }
+      h1 {
+        font-size: 28px;
+        margin-bottom: 4px;
+      }
+      h2 {
+        font-size: 16px;
+        margin-top: 32px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #444;
+      }
+      p,
+      li {
+        font-size: 15px;
+        color: #333;
+      }
+      a {
+        color: #2563eb;
+      }
+      .meta {
+        color: #888;
+        font-size: 13px;
+        margin-bottom: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="/"><img src="/icon.png" alt="Skateable" style="width:52px;height:52px;border-radius:12px;display:block;margin-bottom:20px;" /></a>
+    <h1>Privacy Policy</h1>
+    <p class="meta">Last updated: 4 April 2026</p>
+
+    <h2>What we collect</h2>
+    <ul>
+      <li>
+        <strong>Anonymous user ID: </strong>generated automatically on first launch via Supabase.
+        No name, email, or account is required.
+      </li>
+      <li>
+        <strong>Locations you add: </strong>name and coordinates, stored in our database and readable
+        by other users.
+      </li>
+      <li>
+        <strong>Sessions you log: </strong>dry/wet status, condition tags, optional notes, timestamp,
+        and anonymous user ID.
+      </li>
+      <li><strong>Location flags: </strong>the flag reason, optional note, and anonymous user ID.</li>
+      <li>
+        <strong>Photos: </strong>photos you attach to locations are uploaded to our servers and
+        visible to other users. No EXIF or metadata beyond the image itself is stored.
+      </li>
+      <li>
+        <strong>Location (foreground): </strong>used to calculate distances, show nearby locations,
+        and auto-fill coordinates when adding a location. Never sent to our servers.
+      </li>
+      <li>
+        <strong>Location (background): </strong>if you enable nearby spot alerts in Settings,
+        your location is monitored in the background to notify you when you are near a saved spot.
+        Background location data is processed on-device only and never sent to our servers.
+      </li>
+      <li>
+        <strong>Weather data: </strong>fetched from Open-Meteo, with automatic fallback to MET Norway
+        (api.met.no), using your location coordinates. UK locations use MET Office data proxied via
+        our servers. No personal data is sent with weather requests.
+      </li>
+      <li>
+        <strong>iCloud: </strong>saved spots, favourites, settings, and planned sessions are synced
+        via Apple iCloud Key-Value Storage. This data is governed by Apple's iCloud terms and is not
+        accessible to us.
+      </li>
+    </ul>
+
+    <h2>What we don't collect</h2>
+    <p>No name, email, phone number, device identifier, or usage analytics.</p>
+
+    <h2>Data storage</h2>
+    <p>
+      Locations, sessions, flags, and photos are stored in Supabase hosted on AWS infrastructure.
+      Anonymous user IDs are stored locally on your device. iCloud data is stored by Apple.
+    </p>
+
+    <h2>Data deletion</h2>
+    <p>
+      Tap <strong>Settings → Reset App</strong> to delete all locally stored data.
+    </p>
+
+    <h2>Third parties</h2>
+    <ul>
+      <li>
+        Supabase (database, auth, and photo storage):
+        <a href="https://supabase.com/privacy">supabase.com/privacy</a>
+      </li>
+      <li>
+        Open-Meteo (weather):
+        <a href="https://open-meteo.com/en/terms">open-meteo.com/en/terms</a>
+      </li>
+      <li>
+        MET Norway (weather fallback):
+        <a href="https://www.met.no/en/About-us/privacy">met.no/en/About-us/privacy</a>
+      </li>
+      <li>
+        MET Office (UK weather, proxied):
+        <a href="https://www.metoffice.gov.uk/policies/privacy">metoffice.gov.uk/policies/privacy</a>
+      </li>
+      <li>
+        Apple iCloud (sync):
+        <a href="https://www.apple.com/legal/privacy/">apple.com/legal/privacy</a>
+      </li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p><a href="mailto:skateable@paulmwhite.com">skateable@paulmwhite.com</a></p>
+  </body>
+</html>
