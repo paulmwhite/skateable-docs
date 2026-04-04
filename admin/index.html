@@ -720,7 +720,7 @@
       async function loadPendingPhotos() {
         const { data, error } = await db
           .from('park_photos')
-          .select('id, park_id, storage_path, created_at, parks(name, latitude, longitude, attributes)')
+          .select('id, park_id, storage_path, labels, requested_primary, created_at, parks(name, latitude, longitude, attributes)')
           .eq('approved', false)
           .eq('reviewed', false)
           .order('created_at', { ascending: true })
@@ -729,12 +729,48 @@
         return data;
       }
 
-      async function approvePhoto(id) {
+      async function approvePhoto(id, setAsPrimary = false) {
+        if (setAsPrimary) {
+          // Get the park_id for this photo
+          const { data: photo } = await db
+            .from('park_photos')
+            .select('park_id')
+            .eq('id', id)
+            .single();
+          if (photo) {
+            // Unset current primary
+            await db
+              .from('park_photos')
+              .update({ is_primary: false })
+              .eq('park_id', photo.park_id)
+              .eq('is_primary', true);
+          }
+        }
+        const updateData = { approved: true, reviewed: true };
+        if (setAsPrimary) updateData.is_primary = true;
         const { error } = await db
           .from('park_photos')
-          .update({ approved: true, reviewed: true })
+          .update(updateData)
           .eq('id', id);
         if (error) throw error;
+        // Auto-set primary if this is the first approved photo for the park
+        if (!setAsPrimary) {
+          const { data: photo } = await db
+            .from('park_photos')
+            .select('park_id')
+            .eq('id', id)
+            .single();
+          if (photo) {
+            const { count } = await db
+              .from('park_photos')
+              .select('id', { count: 'exact', head: true })
+              .eq('park_id', photo.park_id)
+              .eq('approved', true);
+            if (count === 1) {
+              await db.from('park_photos').update({ is_primary: true }).eq('id', id);
+            }
+          }
+        }
       }
 
       async function rejectPhoto(id, storagePath) {
@@ -747,6 +783,95 @@
           .update({ approved: false, reviewed: true })
           .eq('id', id);
         if (dbError) throw dbError;
+      }
+
+      // ─── Photo management ───────────────────────────────────────────────
+
+      async function loadApprovedPhotos() {
+        const { data, error } = await db
+          .from('park_photos')
+          .select('id, park_id, storage_path, labels, is_primary, sort_order, created_at, parks(name)')
+          .eq('approved', true)
+          .order('park_id')
+          .order('is_primary', { ascending: false })
+          .order('sort_order')
+          .limit(500);
+        if (error) throw error;
+        return data;
+      }
+
+      async function removeApprovedPhoto(id) {
+        const { error } = await db
+          .from('park_photos')
+          .update({ approved: false, reviewed: true })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      async function setPhotoPrimary(id, parkId) {
+        // Unset current primary
+        await db
+          .from('park_photos')
+          .update({ is_primary: false })
+          .eq('park_id', parkId)
+          .eq('is_primary', true);
+        // Set new primary
+        const { error } = await db
+          .from('park_photos')
+          .update({ is_primary: true })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      async function updatePhotoLabels(id, labels) {
+        const { error } = await db
+          .from('park_photos')
+          .update({ labels })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      // ─── Outdated reports ───────────────────────────────────────────────
+
+      async function loadOutdatedReports() {
+        const { data, error } = await db
+          .from('photo_reports')
+          .select('photo_id, reason, created_at, park_photos(id, park_id, storage_path, approved, parks(name))');
+        if (error) throw error;
+        // Group by photo_id and count
+        const grouped = new Map();
+        for (const r of (data ?? [])) {
+          const pid = r.photo_id;
+          if (!grouped.has(pid)) {
+            grouped.set(pid, {
+              photoId: pid,
+              photo: r.park_photos,
+              count: 0,
+              latestDate: r.created_at,
+            });
+          }
+          const g = grouped.get(pid);
+          g.count++;
+          if (r.created_at > g.latestDate) g.latestDate = r.created_at;
+        }
+        return Array.from(grouped.values()).sort((a, b) => b.count - a.count);
+      }
+
+      async function dismissReports(photoId) {
+        const { error } = await db
+          .from('photo_reports')
+          .delete()
+          .eq('photo_id', photoId);
+        if (error) throw error;
+      }
+
+      async function hideReportedPhoto(photoId) {
+        const { error } = await db
+          .from('park_photos')
+          .update({ approved: false, reviewed: false })
+          .eq('id', photoId);
+        if (error) throw error;
+        await dismissReports(photoId);
       }
 
       // ─── Parks ───────────────────────────────────────────────────────────────
@@ -1336,6 +1461,10 @@
                 <span class="summary-count loading">—</span>
                 park flags
               </div>
+              <div class="summary-chip" id="summary-reports" data-target-section="details-reports">
+                <span class="summary-count loading">—</span>
+                outdated reports
+              </div>
               <div class="summary-chip" id="summary-sessions" data-target-section="details-sessions">
                 <span class="summary-count loading">—</span>
                 recent sessions
@@ -1357,6 +1486,18 @@
               <details id="details-photos">
                 <summary><h2>Photos to review<span class="section-badge" id="badge-photos"></span> <span class="section-caret">▶</span></h2></summary>
                 <div id="photos-content" class="loading">Loading…</div>
+              </details>
+            </section>
+            <section>
+              <details id="details-photo-mgmt">
+                <summary><h2>Photo management <span class="section-caret">▶</span></h2></summary>
+                <div id="photo-mgmt-content" class="loading">Loading…</div>
+              </details>
+            </section>
+            <section>
+              <details id="details-reports">
+                <summary><h2>Outdated reports<span class="section-badge" id="badge-reports"></span> <span class="section-caret">▶</span></h2></summary>
+                <div id="reports-content" class="loading">Loading…</div>
               </details>
             </section>
             <section>
@@ -1409,6 +1550,15 @@
             attrs.drainageQuality ? DRAINAGE_LABELS[attrs.drainageQuality] : null,
           ].filter(Boolean).map(t => `<span class="photo-card-tag">${escHtml(t)}</span>`).join('');
 
+          const labelTags = (p.labels ?? [])
+            .map(l => FEATURE_LABELS[l] ?? l)
+            .map(t => `<span class="photo-card-tag" style="border-color:var(--accent);color:var(--accent)">${escHtml(t)}</span>`)
+            .join('');
+
+          const primaryBadge = p.requested_primary
+            ? '<span class="photo-card-tag" style="border-color:var(--amber);color:var(--amber)">Requested as primary</span>'
+            : '';
+
           const coords = (park.latitude != null && park.longitude != null)
             ? `<div>${park.latitude.toFixed(4)}, ${park.longitude.toFixed(4)}</div>`
             : '';
@@ -1420,12 +1570,86 @@
                 <div class="photo-card-park">${escHtml(parkName)}</div>
                 <div class="photo-card-meta">
                   ${tags}
+                  ${labelTags}
+                  ${primaryBadge}
                   ${coords}
                   <div>Submitted ${date}</div>
                 </div>
                 <div class="photo-card-actions">
                   <button class="btn-approve" data-action="approve" data-id="${p.id}">Approve</button>
+                  ${p.requested_primary ? `<button class="btn-approve" style="background:var(--amber)" data-action="approve-as-primary" data-id="${p.id}">Approve as primary</button>` : ''}
                   <button class="btn-reject" data-action="reject" data-id="${p.id}" data-path="${escAttr(p.storage_path)}">Reject</button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        return `<div class="photo-grid">${cards}</div>`;
+      }
+
+      function renderPhotoManagement(photos) {
+        if (photos.length === 0) return '<p class="empty">No approved photos.</p>';
+        // Group by park
+        const byPark = new Map();
+        for (const p of photos) {
+          const parkName = p.parks?.name ?? 'Unknown';
+          if (!byPark.has(p.park_id)) byPark.set(p.park_id, { name: parkName, photos: [] });
+          byPark.get(p.park_id).photos.push(p);
+        }
+        const groups = Array.from(byPark.entries()).map(([parkId, group]) => {
+          const photoCards = group.photos.map(p => {
+            const url = `${SUPABASE_URL}/storage/v1/object/public/park-photos/${p.storage_path}`;
+            const labelTags = (p.labels ?? [])
+              .map(l => FEATURE_LABELS[l] ?? l)
+              .map(t => `<span class="photo-card-tag" style="border-color:var(--accent);color:var(--accent)">${escHtml(t)}</span>`)
+              .join('');
+            const primaryBadge = p.is_primary
+              ? '<span class="photo-card-tag" style="border-color:var(--green);color:var(--green)">Primary</span>'
+              : `<button class="btn-detail" style="font-size:9px" data-action="set-primary" data-id="${p.id}" data-park-id="${p.park_id}">Set primary</button>`;
+            return `
+              <div class="photo-card" id="managed-photo-${p.id}" style="max-width:200px">
+                <img src="${url}" alt="" loading="lazy" style="height:120px" />
+                <div class="photo-card-body" style="padding:6px">
+                  <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">${labelTags}${primaryBadge}</div>
+                  <div class="photo-card-actions">
+                    <button class="btn-reject" style="font-size:9px" data-action="remove-photo" data-id="${p.id}">Remove</button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+          return `
+            <div style="margin-bottom:16px">
+              <h3 style="font-size:13px;color:var(--dim);margin-bottom:6px">${escHtml(group.name)} (${group.photos.length})</h3>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">${photoCards}</div>
+            </div>
+          `;
+        }).join('');
+        return groups;
+      }
+
+      function renderOutdatedReports(reports) {
+        if (reports.length === 0) return '<p class="empty">No outdated reports.</p>';
+        const cards = reports.map(r => {
+          const photo = r.photo ?? {};
+          const parkName = photo.parks?.name ?? 'Unknown';
+          const url = photo.storage_path
+            ? `${SUPABASE_URL}/storage/v1/object/public/park-photos/${photo.storage_path}`
+            : '';
+          const isHidden = !photo.approved;
+          return `
+            <div class="photo-card" id="report-${r.photoId}" style="max-width:240px">
+              ${url ? `<img src="${url}" alt="" loading="lazy" />` : ''}
+              <div class="photo-card-body">
+                <div class="photo-card-park">${escHtml(parkName)}</div>
+                <div class="photo-card-meta">
+                  <span class="photo-card-tag" style="border-color:var(--amber);color:var(--amber)">${r.count} report${r.count !== 1 ? 's' : ''}</span>
+                  ${isHidden ? '<span class="photo-card-tag" style="border-color:var(--red);color:var(--red)">Auto-hidden</span>' : ''}
+                  <div>Latest: ${new Date(r.latestDate).toLocaleDateString()}</div>
+                </div>
+                <div class="photo-card-actions">
+                  <button class="btn-approve" data-action="dismiss-reports" data-photo-id="${r.photoId}">Dismiss reports</button>
+                  ${!isHidden ? `<button class="btn-reject" data-action="hide-reported" data-photo-id="${r.photoId}">Hide photo</button>` : ''}
                 </div>
               </div>
             </div>
@@ -1675,6 +1899,8 @@
           loadRecentSection(),
           loadSessionsSection(),
           loadPhotosSection(),
+          loadPhotoMgmtSection(),
+          loadReportsSection(),
           loadDuplicatesSection(),
           loadParkingSection(),
           loadFlagsSection(),
@@ -1711,6 +1937,29 @@
           const photos = await loadPendingPhotos();
           el.innerHTML = renderPhotos(photos);
           updateSummaryChip('summary-photos', photos.length);
+        } catch (err) {
+          el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
+        }
+      }
+
+      async function loadPhotoMgmtSection() {
+        const el = document.getElementById('photo-mgmt-content');
+        if (!el) return;
+        try {
+          const photos = await loadApprovedPhotos();
+          el.innerHTML = renderPhotoManagement(photos);
+        } catch (err) {
+          el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
+        }
+      }
+
+      async function loadReportsSection() {
+        const el = document.getElementById('reports-content');
+        if (!el) return;
+        try {
+          const reports = await loadOutdatedReports();
+          el.innerHTML = renderOutdatedReports(reports);
+          updateSummaryChip('summary-reports', reports.length);
         } catch (err) {
           el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
         }
@@ -1854,6 +2103,16 @@
           return;
         }
 
+        if (action === 'approve-as-primary') {
+          btn.disabled = true;
+          try {
+            await approvePhoto(btn.dataset.id, true);
+            removePhotoCard(btn.dataset.id);
+            decrementSummaryChip('summary-photos');
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
         if (action === 'reject') {
           if (!confirm('Delete this photo and mark as rejected?')) return;
           btn.disabled = true;
@@ -1861,6 +2120,45 @@
             await rejectPhoto(btn.dataset.id, btn.dataset.path);
             removePhotoCard(btn.dataset.id);
             decrementSummaryChip('summary-photos');
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'set-primary') {
+          btn.disabled = true;
+          try {
+            await setPhotoPrimary(btn.dataset.id, btn.dataset.parkId);
+            await loadPhotoMgmtSection();
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'remove-photo') {
+          if (!confirm('Remove this photo? It will be hidden from the app.')) return;
+          btn.disabled = true;
+          try {
+            await removeApprovedPhoto(btn.dataset.id);
+            document.getElementById(`managed-photo-${btn.dataset.id}`)?.remove();
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'dismiss-reports') {
+          btn.disabled = true;
+          try {
+            await dismissReports(btn.dataset.photoId);
+            document.getElementById(`report-${btn.dataset.photoId}`)?.remove();
+            decrementSummaryChip('summary-reports');
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'hide-reported') {
+          btn.disabled = true;
+          try {
+            await hideReportedPhoto(btn.dataset.photoId);
+            document.getElementById(`report-${btn.dataset.photoId}`)?.remove();
+            decrementSummaryChip('summary-reports');
           } catch (err) { alert(err.message); btn.disabled = false; }
           return;
         }
