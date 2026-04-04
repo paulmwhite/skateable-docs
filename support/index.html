@@ -50,6 +50,75 @@
         text-decoration: none;
         font-size: 14px;
       }
+      .section-toggle {
+        border: none;
+        border-bottom: 1px solid #e5e5e5;
+        padding-bottom: 4px;
+        margin-top: 32px;
+      }
+      .section-toggle > summary {
+        list-style: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .section-toggle > summary::-webkit-details-marker {
+        display: none;
+      }
+      .section-toggle > summary::before {
+        content: '▸';
+        font-size: 12px;
+        color: #888;
+        transition: transform 0.15s;
+      }
+      .section-toggle[open] > summary::before {
+        transform: rotate(90deg);
+      }
+      .section-toggle > summary h2 {
+        margin: 0;
+      }
+      .bug-list {
+        list-style: none;
+        padding: 0;
+        margin: 12px 0 0;
+      }
+      .bug-list li {
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        margin-bottom: 8px;
+      }
+      .bug-list summary {
+        cursor: pointer;
+        padding: 10px 14px;
+        font-size: 14px;
+        font-weight: 500;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .bug-list summary::after {
+        content: attr(data-version);
+        font-size: 11px;
+        font-weight: 600;
+        color: #fff;
+        background: #2563eb;
+        padding: 2px 8px;
+        border-radius: 4px;
+        flex-shrink: 0;
+        margin-left: 12px;
+      }
+      .bug-list .bug-body {
+        padding: 0 14px 12px;
+        font-size: 13px;
+        color: #555;
+        line-height: 1.5;
+      }
+      .bug-list .bug-body .impact {
+        margin: 4px 0 0;
+        font-size: 12px;
+        color: #888;
+      }
     </style>
   </head>
   <body>
@@ -61,35 +130,55 @@
     <p>For bug reports, feedback or other enquiries, email us directly.</p>
     <a class="contact-btn" href="mailto:skateable@paulmwhite.com">skateable@paulmwhite.com</a>
 
-    <h2>Common questions</h2>
+    <details class="section-toggle" open>
+      <summary><h2>Common questions</h2></summary>
 
-    <p><strong>Why is my park showing the wrong score?</strong><br />
-    Scores are based on Open-Meteo weather data and community-logged sessions. If the score seems off,
-    log a session (dry or wet) to correct it for other users. You can also adjust your personal
-    tolerance in Settings. <a href="/engine/">Learn how the scoring engine works.</a></p>
+      <p><strong>Why is my park showing the wrong score?</strong><br />
+      Scores are based on Open-Meteo weather data and community-logged sessions. If the score seems off,
+      log a session (dry or wet) to correct it for other users. You can also adjust your personal
+      tolerance in Settings. <a href="/engine/">Learn how the scoring engine works.</a></p>
 
-    <p><strong>How do I delete a location?</strong><br />
-    On the Locations tab, swipe left on the location and tap Unsave.</p>
+      <p><strong>How do I delete a location?</strong><br />
+      On the Locations tab, swipe left on the location and tap Unsave.</p>
 
-    <p><strong>How do I delete my data?</strong><br />
-    Tap Settings → Reset App to clear all locally stored locations and settings.</p>
+      <p><strong>How do I delete my data?</strong><br />
+      Tap Settings > Reset App to clear all locally stored locations and settings.</p>
 
-    <p><strong>The app isn't loading weather data.</strong><br />
-    Check your internet connection. Weather is fetched from Open-Meteo on each screen load.
-    If the problem persists, send us a feedback email from Settings; it includes logs automatically.</p>
+      <p><strong>The app isn't loading weather data.</strong><br />
+      Check your internet connection. Weather is fetched from Open-Meteo on each screen load.
+      If the problem persists, send us a feedback email from Settings; it includes logs automatically.</p>
 
-    <p><strong>A location has incorrect information.</strong><br />
-    Swipe left on the location in the Locations tab and tap Flag, or use the flag icon on the Dashboard.
-    Our team reviews flags and corrects bad data.</p>
+      <p><strong>A location has incorrect information.</strong><br />
+      Swipe left on the location in the Locations tab and tap Flag, or use the flag icon on the Dashboard.
+      Our team reviews flags and corrects bad data.</p>
 
-    <p><strong>I can't find a park in another city or country when searching.</strong><br />
-    Search shows locations within roughly 300&nbsp;km of your current location. Version 1.1 improved
-    search relevance; if a spot still doesn't appear, it may not have been added yet - use Add Location
-    to contribute it.</p>
+      <p><strong>I can't find a park in another city or country when searching.</strong><br />
+      Search shows locations within roughly 300&nbsp;km of your current location. Version 1.1 improved
+      search relevance; if a spot still doesn't appear, it may not have been added yet - use Add Location
+      to contribute it.</p>
 
-    <p><strong>Which location is used for my widgets?</strong><br />
-    Widgets display your favourite locations in the order they appear on the Locations tab. The
-    location at the top of your favourites list is used first. To change which location appears in
-    a widget, reorder your favourites on the Locations tab by dragging them into the order you want.</p>
+      <p><strong>Which location is used for my widgets?</strong><br />
+      Widgets display your favourite locations in the order they appear on the Locations tab. The
+      location at the top of your favourites list is used first. To change which location appears in
+      a widget, reorder your favourites on the Locations tab by dragging them into the order you want.</p>
+    </details>
+
+    <details class="section-toggle" open>
+      <summary><h2>Known bugs</h2></summary>
+      <p>Bugs we're aware of and tracking. Expand for details.</p>
+      <ul class="bug-list">
+        <li>
+          <details>
+            <summary data-version="Fix in 1.3.0">Unnecessary failed requests on app load</summary>
+            <div class="bug-body">
+              When the Dashboard loads before a spot is selected, the app briefly sends
+              requests with an empty identifier, which the server rejects. This does not
+              affect scores, sessions, or any visible behaviour.
+              <p class="impact">Impact: none visible to users. Causes harmless server-side log noise.</p>
+            </div>
+          </details>
+        </li>
+      </ul>
+    </details>
   </body>
 </html>
