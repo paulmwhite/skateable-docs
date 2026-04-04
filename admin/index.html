@@ -1445,6 +1445,85 @@
         `;
       }
 
+      // ─── Parking suggestions ──────────────────────────────────────────────────
+
+      async function loadParkingSuggestions() {
+        const { data, error } = await db
+          .from('parking_suggestions')
+          .select('id, park_id, user_id, latitude, longitude, source, approved, reviewed, created_at, parks:park_id(id, name, attributes)')
+          .eq('reviewed', false)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        return data ?? [];
+      }
+
+      async function approveParkingSuggestion(id, parkId, lat, lon, fullAttrs) {
+        await saveParkingLocation(parkId, fullAttrs, { latitude: lat, longitude: lon });
+        const { error } = await db
+          .from('parking_suggestions')
+          .update({ approved: true, reviewed: true })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      async function rejectParkingSuggestion(id) {
+        const { error } = await db
+          .from('parking_suggestions')
+          .update({ approved: false, reviewed: true })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      function renderParkingSuggestions(suggestions) {
+        if (suggestions.length === 0) return '<p class="empty">No pending parking suggestions.</p>';
+        const rows = suggestions.map(s => {
+          const park = s.parks ?? {};
+          const existing = park.attributes?.parkingLocation;
+          const mapsUrl = `https://www.google.com/maps?q=${s.latitude},${s.longitude}`;
+          const hasExisting = existing != null;
+          const existingText = hasExisting
+            ? `${existing.latitude.toFixed(5)}, ${existing.longitude.toFixed(5)}`
+            : 'None';
+          return `
+            <tr id="ps-row-${s.id}">
+              <td>
+                ${escHtml(park.name ?? 'Unknown')}
+                <span class="flag-badge">${escHtml(s.source)}</span>
+              </td>
+              <td>
+                ${s.latitude.toFixed(5)}, ${s.longitude.toFixed(5)}
+                <a class="parking-map-link" href="${mapsUrl}" target="_blank" rel="noopener">&#8599; map</a>
+              </td>
+              <td>${existingText}</td>
+              <td style="font-size:12px;color:var(--dim)">${new Date(s.created_at).toLocaleDateString()}</td>
+              <td>
+                <div class="park-actions">
+                  <button class="btn-approve" data-action="approve-ps" data-id="${s.id}"
+                    data-park-id="${s.park_id}" data-lat="${s.latitude}" data-lon="${s.longitude}">Approve</button>
+                  <button class="btn-reject" data-action="reject-ps" data-id="${s.id}">Reject</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+        return `
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Park</th>
+                  <th>Suggested coords</th>
+                  <th>Current parking</th>
+                  <th>Date</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="ps-body">${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
       // ─── Parking locations ────────────────────────────────────────────────────
 
       async function loadParkingLocations() {
@@ -1603,6 +1682,10 @@
                 <span class="summary-count loading">—</span>
                 recent sessions
               </div>
+              <div class="summary-chip" id="summary-parking-suggestions" data-target-section="details-parking-suggestions">
+                <span class="summary-count loading">—</span>
+                parking suggestions
+              </div>
             </div>
             <section>
               <details>
@@ -1638,6 +1721,12 @@
               <details id="details-duplicates">
                 <summary><h2>Potential duplicates<span class="section-badge" id="badge-duplicates"></span> <span class="section-caret">▶</span></h2></summary>
                 <div id="duplicates-content" class="loading">Loading…</div>
+              </details>
+            </section>
+            <section>
+              <details id="details-parking-suggestions">
+                <summary><h2>Parking suggestions<span class="section-badge" id="badge-parking-suggestions"></span> <span class="section-caret">▶</span></h2></summary>
+                <div id="parking-suggestions-content" class="loading">Loading…</div>
               </details>
             </section>
             <section>
@@ -2048,6 +2137,7 @@
           loadPhotoMgmtSection(),
           loadReportsSection(),
           loadDuplicatesSection(),
+          loadParkingSuggestionsSection(),
           loadParkingSection(),
           loadFlagsSection(),
           loadClosedSection(),
@@ -2120,6 +2210,18 @@
           const pairs = await loadDuplicateCandidates();
           el.innerHTML = renderDuplicates(pairs);
           updateSummaryChip('summary-duplicates', pairs.length);
+        } catch (err) {
+          el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
+        }
+      }
+
+      async function loadParkingSuggestionsSection() {
+        const el = document.getElementById('parking-suggestions-content');
+        if (!el) return;
+        try {
+          const suggestions = await loadParkingSuggestions();
+          updateSummaryChip('summary-parking-suggestions', suggestions.length);
+          el.innerHTML = renderParkingSuggestions(suggestions);
         } catch (err) {
           el.innerHTML = `<p class="error">${escHtml(err.message)}</p>`;
         }
@@ -2658,6 +2760,44 @@
             if (!document.querySelector('#parking-body tr')) {
               document.getElementById('parking-content').innerHTML =
                 '<p class="empty">No parking locations recorded yet.</p>';
+            }
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        // ── Parking suggestion actions ───────────────────────────────────────
+
+        if (action === 'approve-ps') {
+          const id = btn.dataset.id;
+          const parkId = btn.dataset.parkId;
+          const lat = parseFloat(btn.dataset.lat);
+          const lon = parseFloat(btn.dataset.lon);
+          btn.disabled = true;
+          try {
+            const { data } = await db.from('parks').select('attributes').eq('id', parkId).single();
+            await approveParkingSuggestion(id, parkId, lat, lon, data?.attributes ?? {});
+            document.getElementById(`ps-row-${id}`)?.remove();
+            decrementSummaryChip('summary-parking-suggestions');
+            if (!document.querySelector('#ps-body tr')) {
+              document.getElementById('parking-suggestions-content').innerHTML =
+                '<p class="empty">No pending parking suggestions.</p>';
+            }
+            loadParkingSection();
+          } catch (err) { alert(err.message); btn.disabled = false; }
+          return;
+        }
+
+        if (action === 'reject-ps') {
+          const id = btn.dataset.id;
+          if (!confirm('Reject this parking suggestion?')) return;
+          btn.disabled = true;
+          try {
+            await rejectParkingSuggestion(id);
+            document.getElementById(`ps-row-${id}`)?.remove();
+            decrementSummaryChip('summary-parking-suggestions');
+            if (!document.querySelector('#ps-body tr')) {
+              document.getElementById('parking-suggestions-content').innerHTML =
+                '<p class="empty">No pending parking suggestions.</p>';
             }
           } catch (err) { alert(err.message); btn.disabled = false; }
           return;
